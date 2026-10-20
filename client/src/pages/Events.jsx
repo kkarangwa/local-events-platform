@@ -1,77 +1,188 @@
+
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import '../App.css'
 
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL || 'http://localhost:5001'
+).replace(/\/$/, '')
+
+const CATEGORIES = [
+  'All Events',
+  'Technology',
+  'Business',
+  'Creative',
+  'Community',
+  'Education',
+  'Networking',
+]
+
+const QUICK_FILTERS = ['All', 'Today', 'Tomorrow', 'This Weekend']
+
+function formatEventDate(dateValue) {
+  if (!dateValue) {
+    return {
+      day: '--',
+      month: 'TBA',
+      fullDate: 'Date to be announced',
+    }
+  }
+
+  const date = new Date(`${String(dateValue).slice(0, 10)}T12:00:00`)
+
+  if (Number.isNaN(date.getTime())) {
+    return {
+      day: '--',
+      month: 'TBA',
+      fullDate: 'Date to be announced',
+    }
+  }
+
+  return {
+    day: date.toLocaleDateString('en-GB', { day: '2-digit' }),
+    month: date.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase(),
+    fullDate: date.toLocaleDateString('en-GB', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }),
+  }
+}
+
+function formatEventTime(timeValue) {
+  if (!timeValue) return 'Time to be announced'
+
+  const match = String(timeValue).match(/^(\d{1,2}):(\d{2})/)
+
+  if (!match) return String(timeValue)
+
+  const hours = Number(match[1])
+  const minutes = match[2]
+  const period = hours >= 12 ? 'PM' : 'AM'
+  const displayHours = hours % 12 || 12
+
+  return `${displayHours}:${minutes} ${period}`
+}
+
 function Events() {
-  const events = [
-    {
-      date: '20',
-      month: 'OCT',
-      category: 'Technology',
-      title: 'Tech & Innovation Summit',
-      location: 'Kigali Convention Centre',
-      time: '9:00 AM',
-      description:
-        'Connect with innovators, technology professionals, and entrepreneurs exploring the future of technology.',
-    },
-    {
-      date: '24',
-      month: 'OCT',
-      category: 'Business',
-      title: 'Young Entrepreneurs Meetup',
-      location: 'Norrsken House Kigali',
-      time: '2:00 PM',
-      description:
-        'Meet young entrepreneurs, exchange ideas, and discover new opportunities for collaboration.',
-    },
-    {
-      date: '31',
-      month: 'OCT',
-      category: 'Community',
-      title: 'Kigali Community Day',
-      location: 'Kigali City',
-      time: '11:00 AM',
-      description:
-        'A community gathering bringing people together for conversations, activities, and connection.',
-    },
-    {
-      date: '05',
-      month: 'NOV',
-      category: 'Creative',
-      title: 'Creative Arts Showcase',
-      location: 'Kigali Arts Centre',
-      time: '4:00 PM',
-      description:
-        'Discover local creative talent through an evening of art, design, music, and storytelling.',
-    },
-    {
-      date: '08',
-      month: 'NOV',
-      category: 'Education',
-      title: 'Future Skills Workshop',
-      location: 'Kigali Innovation City',
-      time: '10:00 AM',
-      description:
-        'A practical workshop focused on building skills for the changing world of work.',
-    },
-    {
-      date: '15',
-      month: 'NOV',
-      category: 'Networking',
-      title: 'Kigali Networking Night',
-      location: 'Kigali Heights',
-      time: '6:00 PM',
-      description:
-        'Meet professionals, founders, creatives, and other members of Kigali’s growing community.',
-    },
-  ]
+  const [events, setEvents] = useState([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('All Events')
+  const [selectedQuickFilter, setSelectedQuickFilter] = useState('All')
+  const [loading, setLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadEvents() {
+      setLoading(true)
+      setErrorMessage('')
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/events`, {
+          signal: controller.signal,
+        })
+
+        const data = await response.json().catch(() => ({}))
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Unable to load events right now.')
+        }
+
+        // Display published events returned by the database.
+        setEvents(Array.isArray(data.events) ? data.events : [])
+      } catch (error) {
+        if (error.name === 'AbortError') return
+
+        console.error('Failed to load events:', error)
+
+        setErrorMessage(
+          'We could not load events. Please check your connection and try again.'
+        )
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadEvents()
+
+    return () => controller.abort()
+  }, [])
+
+  const filteredEvents = useMemo(() => {
+    const search = searchTerm.trim().toLowerCase()
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const tomorrow = new Date(today)
+    tomorrow.setDate(today.getDate() + 1)
+
+    const monday = new Date(today)
+    monday.setDate(today.getDate() - ((today.getDay() + 6) % 7))
+
+    const sunday = new Date(monday)
+    sunday.setDate(monday.getDate() + 6)
+    sunday.setHours(23, 59, 59, 999)
+
+    return events.filter((event) => {
+      const title = event.title || ''
+      const description = event.description || ''
+      const venue = event.venue || ''
+      const category = event.category || ''
+
+      const matchesSearch =
+        title.toLowerCase().includes(search) ||
+        description.toLowerCase().includes(search) ||
+        venue.toLowerCase().includes(search) ||
+        category.toLowerCase().includes(search)
+
+      const matchesCategory =
+        selectedCategory === 'All Events' ||
+        category.toLowerCase() === selectedCategory.toLowerCase()
+
+      const eventDate = event.event_date
+        ? new Date(`${String(event.event_date).slice(0, 10)}T12:00:00`)
+        : null
+
+      let matchesQuickFilter = true
+
+      if (selectedQuickFilter !== 'All') {
+        if (!eventDate || Number.isNaN(eventDate.getTime())) {
+          matchesQuickFilter = false
+        } else if (selectedQuickFilter === 'Today') {
+          matchesQuickFilter =
+            eventDate.toDateString() === today.toDateString()
+        } else if (selectedQuickFilter === 'Tomorrow') {
+          matchesQuickFilter =
+            eventDate.toDateString() === tomorrow.toDateString()
+        } else if (selectedQuickFilter === 'This Weekend') {
+          matchesQuickFilter =
+            eventDate >= today &&
+            eventDate <= sunday &&
+            (eventDate.getDay() === 0 || eventDate.getDay() === 6)
+        }
+      }
+
+      return matchesSearch && matchesCategory && matchesQuickFilter
+    })
+  }, [events, searchTerm, selectedCategory, selectedQuickFilter])
+
+  function clearFilters() {
+    setSearchTerm('')
+    setSelectedCategory('All Events')
+    setSelectedQuickFilter('All')
+  }
 
   return (
     <div className="events-page">
-      {/* Navigation */}
       <nav className="navbar">
         <Link to="/" className="brand">
           <div className="brand-icon">G</div>
-
           <div>
             <span className="brand-name">Gada</span>
             <span className="brand-subtitle">EVENTS</span>
@@ -87,12 +198,15 @@ function Events() {
         </div>
 
         <div className="nav-actions">
-          <button className="login-btn">Login</button>
-          <button className="nav-register-btn">Get Started</button>
+          <Link to="/login" className="login-btn">
+            Login
+          </Link>
+          <Link to="/register" className="nav-register-btn">
+            Get Started
+          </Link>
         </div>
       </nav>
 
-      {/* Page Header */}
       <section className="events-hero">
         <div className="events-hero-content">
           <span className="section-label">EXPLORE GADA</span>
@@ -104,121 +218,221 @@ function Events() {
           </h1>
 
           <p>
-            Explore events happening around Kigali and discover
-            experiences, communities, and opportunities that interest you.
+            Discover published events around Kigali, connect with communities,
+            and find experiences that interest you.
           </p>
         </div>
       </section>
 
-      {/* Search and Filters */}
       <section className="event-discovery">
         <div className="event-search">
-          <span>⌕</span>
+          <span aria-hidden="true">⌕</span>
+
           <input
-            type="text"
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
             placeholder="Search events, topics or places..."
+            aria-label="Search events"
           />
+
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          )}
         </div>
 
-        <div className="event-filters">
-          <button className="filter active-filter">All Events</button>
-          <button className="filter">Technology</button>
-          <button className="filter">Business</button>
-          <button className="filter">Creative</button>
-          <button className="filter">Community</button>
-          <button className="filter">Education</button>
-        </div>
-      </section>
-
-      {/* Events */}
-      <section className="all-events-section">
-        <div className="events-page-heading">
-          <div>
-            <span className="section-label">UPCOMING</span>
-            <h2>Events happening soon</h2>
-          </div>
-
-          <span className="event-count">
-            {events.length} events
-          </span>
+        <div
+          className="event-quick-filters"
+          aria-label="Filter events by date"
+        >
+          {QUICK_FILTERS.map((filter) => (
+            <button
+              key={filter}
+              type="button"
+              className={
+                selectedQuickFilter === filter
+                  ? 'quick-filter active-quick-filter'
+                  : 'quick-filter'
+              }
+              onClick={() => setSelectedQuickFilter(filter)}
+              aria-pressed={selectedQuickFilter === filter}
+            >
+              {filter === 'All' ? 'All Events' : filter}
+            </button>
+          ))}
         </div>
 
-        <div className="events-page-grid">
-          {events.map((event) => (
-            <article className="large-event-card" key={event.title}>
-              <div className="large-event-cover">
-                <span className="large-event-category">
-                  {event.category}
-                </span>
-
-                <button className="large-save-btn">♡</button>
-
-                <div className="large-date-box">
-                  <strong>{event.date}</strong>
-                  <span>{event.month}</span>
-                </div>
-              </div>
-
-              <div className="large-event-content">
-                <span className="event-time">
-                  {event.month} • {event.time}
-                </span>
-
-                <h3>{event.title}</h3>
-
-                <p className="large-event-description">
-                  {event.description}
-                </p>
-
-                <p className="event-location">
-                  📍 {event.location}
-                </p>
-
-                <div className="large-event-footer">
-                  <span>Open for registration</span>
-
-                  <button className="details-btn">
-                    View Details <span>→</span>
-                  </button>
-                </div>
-              </div>
-            </article>
+        <div
+          className="event-filters"
+          aria-label="Filter events by category"
+        >
+          {CATEGORIES.map((category) => (
+            <button
+              key={category}
+              type="button"
+              className={
+                selectedCategory === category
+                  ? 'filter active-filter'
+                  : 'filter'
+              }
+              onClick={() => setSelectedCategory(category)}
+              aria-pressed={selectedCategory === category}
+            >
+              {category}
+            </button>
           ))}
         </div>
       </section>
 
-      {/* Organizer CTA */}
+      <section className="all-events-section">
+        <div className="events-page-heading">
+          <div>
+            <span className="section-label">DISCOVER</span>
+            <h2>Events happening soon</h2>
+          </div>
+
+          {!loading && !errorMessage && (
+            <span className="event-count">
+              {filteredEvents.length}{' '}
+              {filteredEvents.length === 1 ? 'event' : 'events'}
+            </span>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="no-events" role="status" aria-live="polite">
+            <h3>Loading events...</h3>
+            <p>Finding published events for you.</p>
+          </div>
+        ) : errorMessage ? (
+          <div className="no-events" role="alert">
+            <h3>Events are temporarily unavailable</h3>
+            <p>{errorMessage}</p>
+
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={() => window.location.reload()}
+            >
+              Try again
+            </button>
+          </div>
+        ) : filteredEvents.length > 0 ? (
+          <div className="events-page-grid">
+            {filteredEvents.map((event) => {
+              const date = formatEventDate(event.event_date)
+
+              return (
+                <article className="large-event-card" key={event.id}>
+                  <div className="large-event-cover">
+                    <span className="large-event-category">
+                      {event.category || 'Event'}
+                    </span>
+
+                    <div className="large-date-box">
+                      <strong>{date.day}</strong>
+                      <span>{date.month}</span>
+                    </div>
+                  </div>
+
+                  <div className="large-event-content">
+                    <span className="event-time">
+                      {date.fullDate} · {formatEventTime(event.start_time)}
+                    </span>
+
+                    <h3>{event.title}</h3>
+
+                    <p className="large-event-description">
+                      {event.description ||
+                        'More information about this event will be available soon.'}
+                    </p>
+
+                    <p className="event-location">
+                      📍 {event.venue || 'Venue to be announced'}
+                    </p>
+
+                    <div className="large-event-footer">
+                      <Link
+                        to={`/events/${event.id}`}
+                        className="details-btn"
+                      >
+                        View Details <span>→</span>
+                      </Link>
+
+                      <a
+                        className="details-btn"
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                          `${event.venue || ''}, Kigali, Rwanda`
+                        )}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Find venue <span>↗</span>
+                      </a>
+                    </div>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="no-events">
+            <h3>
+              {events.length === 0
+                ? 'No published events yet'
+                : 'No events found'}
+            </h3>
+
+            <p>
+              {events.length === 0
+                ? 'There are currently no published events. Please check back when organizers publish their listings.'
+                : 'Try another search term or choose a different category or date filter.'}
+            </p>
+
+            {events.length > 0 && (
+              <button
+                type="button"
+                className="primary-btn"
+                onClick={clearFilters}
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
+      </section>
+
       <section className="organizer-cta">
         <div>
           <span className="section-label">ARE YOU AN ORGANIZER?</span>
-
           <h2>Have an event to share?</h2>
-
           <p>
-            Create your event on Gada and make it easier for people
-            to discover and register.
+            Publish your event on Gada and help people discover what is
+            happening in their community.
           </p>
         </div>
 
-        <button className="cta-button">
+        <Link to="/login" className="cta-button">
           Create an Event →
-        </button>
+        </Link>
       </section>
 
-      {/* Footer */}
       <footer>
         <div className="footer-brand">
           <div className="brand-icon">G</div>
-
           <div>
             <strong>Gada</strong>
             <span>EVENTS</span>
           </div>
         </div>
 
-        <p>
-          © 2026 Gada Events. Discover. Register. Experience.
-        </p>
+        <p>© 2026 Gada Events. Discover. Register. Experience.</p>
 
         <div className="footer-links">
           <Link to="/">Home</Link>
@@ -229,4 +443,5 @@ function Events() {
     </div>
   )
 }
+
 export default Events

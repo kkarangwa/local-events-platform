@@ -1,40 +1,108 @@
+
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext'
 import '../App.css'
 
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL || 'http://localhost:5001'
+).replace(/\/$/, '')
+
+function formatEventDate(date) {
+  if (!date) return { day: '--', month: 'TBA' }
+
+  const parsedDate = new Date(`${String(date).slice(0, 10)}T12:00:00`)
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return { day: '--', month: 'TBA' }
+  }
+
+  return {
+    day: parsedDate.toLocaleDateString('en-GB', { day: '2-digit' }),
+    month: parsedDate
+      .toLocaleDateString('en-GB', { month: 'short' })
+      .toUpperCase(),
+  }
+}
+
+function formatEventTime(time) {
+  if (!time) return 'Time to be announced'
+
+  const match = String(time).match(/^(\d{1,2}):(\d{2})/)
+
+  if (!match) return String(time)
+
+  const hours = Number(match[1])
+  const minutes = match[2]
+  const period = hours >= 12 ? 'PM' : 'AM'
+  const displayHours = hours % 12 || 12
+
+  return `${displayHours}:${minutes} ${period}`
+}
+
 function Home() {
-  const events = [
-    {
-      date: '20',
-      month: 'OCT',
-      category: 'Technology',
-      title: 'Tech & Innovation Summit',
-      location: 'Kigali Convention Centre',
-      time: '9:00 AM',
-    },
-    {
-      date: '24',
-      month: 'OCT',
-      category: 'Business',
-      title: 'Young Entrepreneurs Meetup',
-      location: 'Norrsken House Kigali',
-      time: '2:00 PM',
-    },
-    {
-      date: '31',
-      month: 'OCT',
-      category: 'Community',
-      title: 'Kigali Community Day',
-      location: 'Kigali City',
-      time: '11:00 AM',
-    },
-  ]
+  const { user, isAuthenticated } = useAuth()
+
+  const [events, setEvents] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadEvents() {
+      try {
+        setLoading(true)
+        setError('')
+
+        const response = await fetch(`${API_BASE_URL}/api/events`, {
+          signal: controller.signal,
+        })
+
+        const data = await response.json().catch(() => ({}))
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Could not load events.')
+        }
+
+        setEvents(Array.isArray(data.events) ? data.events : [])
+      } catch (err) {
+        if (err.name === 'AbortError') return
+
+        console.error('Failed to load events:', err)
+
+        setError(
+          'Unable to load events right now. Please check your connection and try again.'
+        )
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadEvents()
+
+    return () => controller.abort()
+  }, [])
+
+  const dashboardPath =
+    user?.role === 'organizer'
+      ? '/organizer-dashboard'
+      : '/participant-dashboard'
+
+  const createEventPath =
+    isAuthenticated && user?.role === 'organizer'
+      ? '/organizer-dashboard'
+      : '/login'
+
+  const featuredEvent = events[0]
 
   return (
     <div className="app">
       <nav className="navbar">
         <Link to="/" className="brand">
           <div className="brand-icon">G</div>
-
           <div>
             <span className="brand-name">Gada</span>
             <span className="brand-subtitle">EVENTS</span>
@@ -44,12 +112,25 @@ function Home() {
         <div className="nav-links">
           <Link to="/">Home</Link>
           <Link to="/events">Events</Link>
-          <a href="#about">About</a>
+          <a href="/#about">About</a>
         </div>
 
         <div className="nav-actions">
-          <button className="login-btn">Login</button>
-          <button className="nav-register-btn">Get Started</button>
+          {isAuthenticated ? (
+            <Link to={dashboardPath} className="login-btn">
+              My Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link to="/login" className="login-btn">
+                Login
+              </Link>
+
+              <Link to="/register" className="nav-register-btn">
+                Get Started
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 
@@ -77,17 +158,17 @@ function Home() {
                 Explore Events <span>→</span>
               </Link>
 
-              <button className="outline-btn">
+              <Link to={createEventPath} className="outline-btn">
                 Create an Event
-              </button>
+              </Link>
             </div>
 
             <div className="hero-trust">
-              <div className="avatar-stack">
-                <div>J</div>
+              <div className="avatar-stack" aria-hidden="true">
+                <div>G</div>
                 <div>A</div>
-                <div>M</div>
-                <div>K</div>
+                <div>D</div>
+                <div>A</div>
               </div>
 
               <p>
@@ -101,28 +182,63 @@ function Home() {
           <div className="hero-visual">
             <div className="visual-label">FEATURED EVENT</div>
 
-            <div className="featured-card">
-              <div className="featured-top">
-                <span className="category-pill">TECHNOLOGY</span>
-                <button className="heart-btn">♡</button>
-              </div>
+            {featuredEvent ? (
+              <article className="featured-card">
+                <div className="featured-top">
+                  <span className="category-pill">
+                    {featuredEvent.category || 'EVENT'}
+                  </span>
+                </div>
 
-              <div className="featured-date">
-                <strong>20</strong>
-                <span>OCT</span>
-              </div>
+                <div className="featured-date">
+                  <strong>
+                    {formatEventDate(featuredEvent.event_date).day}
+                  </strong>
+                  <span>
+                    {formatEventDate(featuredEvent.event_date).month}
+                  </span>
+                </div>
 
-              <div className="featured-info">
-                <p>FRIDAY • 9:00 AM</p>
-                <h2>Tech & Innovation Summit</h2>
-                <span>📍 Kigali Convention Centre</span>
-              </div>
+                <div className="featured-info">
+                  <p>{formatEventTime(featuredEvent.start_time)}</p>
+                  <h2>{featuredEvent.title}</h2>
+                  <span>
+                    📍 {featuredEvent.venue || 'Venue to be announced'}
+                  </span>
+                </div>
 
-              <div className="featured-footer">
-                <span>120+ people interested</span>
-                <button>View event →</button>
+                <div className="featured-footer">
+                  <span>Discover this event</span>
+                  <Link to={`/events/${featuredEvent.id}`}>
+                    View Details →
+                  </Link>
+                </div>
+              </article>
+            ) : (
+              <div className="featured-card">
+                <div className="featured-info">
+                  <h2>
+                    {loading
+                      ? 'Finding events for you...'
+                      : error
+                        ? 'Events are temporarily unavailable'
+                        : 'Your next experience starts here.'}
+                  </h2>
+
+                  <p>
+                    {loading
+                      ? 'Please wait while we load published events.'
+                      : error
+                        ? 'Please visit the events page and try again shortly.'
+                        : 'Be the first to discover new events as organizers publish them.'}
+                  </p>
+                </div>
+
+                <div className="featured-footer">
+                  <Link to="/events">Explore events →</Link>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="floating-card floating-one">
               <span>📍</span>
@@ -136,7 +252,7 @@ function Home() {
               <span>✓</span>
               <div>
                 <strong>Easy registration</strong>
-                <small>Register in seconds</small>
+                <small>Discover opportunities</small>
               </div>
             </div>
           </div>
@@ -146,10 +262,9 @@ function Home() {
           <div className="search-box">
             <div className="search-item">
               <span className="search-icon">⌕</span>
-
               <div>
-                <small>SEARCH</small>
-                <p>What are you looking for?</p>
+                <small>DISCOVER</small>
+                <p>Find your next experience</p>
               </div>
             </div>
 
@@ -157,14 +272,15 @@ function Home() {
 
             <div className="search-item">
               <span className="search-icon">◉</span>
-
               <div>
                 <small>LOCATION</small>
                 <p>Kigali, Rwanda</p>
               </div>
             </div>
 
-            <button className="search-btn">Search Events</button>
+            <Link to="/events" className="search-btn">
+              Search Events
+            </Link>
           </div>
         </section>
 
@@ -181,40 +297,76 @@ function Home() {
             </Link>
           </div>
 
-          <div className="event-grid">
-            {events.map((event) => (
-              <article className="event-card" key={event.title}>
-                <div className="event-cover">
-                  <span className="event-category">
-                    {event.category}
-                  </span>
+          {loading ? (
+            <p role="status" aria-live="polite">
+              Loading published events...
+            </p>
+          ) : error ? (
+            <div className="event-empty-state">
+              <h3>Events are temporarily unavailable</h3>
+              <p role="alert">{error}</p>
 
-                  <button className="save-btn">♡</button>
+              <button
+                type="button"
+                className="details-btn"
+                onClick={() => window.location.reload()}
+              >
+                Try again →
+              </button>
+            </div>
+          ) : events.length === 0 ? (
+            <div className="event-empty-state">
+              <h3>No published events yet</h3>
+              <p>
+                There are no upcoming published events at the moment.
+                Please check back soon.
+              </p>
 
-                  <div className="event-date-box">
-                    <strong>{event.date}</strong>
-                    <span>{event.month}</span>
-                  </div>
-                </div>
+              <Link to={createEventPath} className="primary-btn">
+                Create an Event →
+              </Link>
+            </div>
+          ) : (
+            <div className="event-grid">
+              {events.slice(0, 3).map((event) => {
+                const eventDate = formatEventDate(event.event_date)
 
-                <div className="event-content">
-                  <span className="event-time">
-                    {event.month} • {event.time}
-                  </span>
+                return (
+                  <article className="event-card" key={event.id}>
+                    <div className="event-cover">
+                      <span className="event-category">
+                        {event.category || 'Event'}
+                      </span>
 
-                  <h3>{event.title}</h3>
+                      <div className="event-date-box">
+                        <strong>{eventDate.day}</strong>
+                        <span>{eventDate.month}</span>
+                      </div>
+                    </div>
 
-                  <p className="event-location">
-                    📍 {event.location}
-                  </p>
+                    <div className="event-content">
+                      <span className="event-time">
+                        {eventDate.month} · {formatEventTime(event.start_time)}
+                      </span>
 
-                  <button className="details-btn">
-                    View Details <span>→</span>
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
+                      <h3>{event.title}</h3>
+
+                      <p className="event-location">
+                        📍 {event.venue || 'Venue to be announced'}
+                      </p>
+
+                      <Link
+                        to={`/events/${event.id}`}
+                        className="details-btn"
+                      >
+                        View Details <span>→</span>
+                      </Link>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          )}
         </section>
 
         <section className="how-section">
@@ -273,9 +425,9 @@ function Home() {
                 participants.
               </p>
 
-              <button className="dark-btn">
-                Learn more about Gada →
-              </button>
+              <Link to="/events" className="dark-btn">
+                Explore Gada Events →
+              </Link>
             </div>
 
             <div className="about-shape">
@@ -294,21 +446,18 @@ function Home() {
       <footer>
         <div className="footer-brand">
           <div className="brand-icon">G</div>
-
           <div>
             <strong>Gada</strong>
             <span>EVENTS</span>
           </div>
         </div>
 
-        <p>
-          © 2026 Gada Events. Discover. Register. Experience.
-        </p>
+        <p>© 2026 Gada Events. Discover. Register. Experience.</p>
 
         <div className="footer-links">
           <Link to="/">Home</Link>
           <Link to="/events">Events</Link>
-          <a href="#about">About</a>
+          <a href="/#about">About</a>
         </div>
       </footer>
     </div>
