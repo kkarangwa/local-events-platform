@@ -1,0 +1,456 @@
+
+/* Gada Events — Registration page */
+
+.gada-register {
+  min-height: 100vh;
+  background: #f7f6f2;
+  color: #222824;
+  font-family: 'DM Sans', Inter, system-ui, -apple-system, sans-serif;
+}
+
+.gada-register *,
+.gada-register *::before,
+.gada-register *::after {
+  box-sizing: border-box;
+}
+
+.gada-register .register-header {
+  min-height: 82px;
+  padding: 16px 7%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #eae8e1;
+}
+
+.gada-register .register-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  color: #202824;
+  text-decoration: none;
+}
+
+.gada-register .register-brand-icon {
+  width: 43px;
+  height: 43px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: #ef6b4f;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.gada-register .register-brand-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gada-register .register-brand-copy strong {
+  font-size: 21px;
+  line-height: 1.1;
+}
+
+.gada-register .register-brand-copy small {
+  color: #777d76;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 3px;
+}
+
+.gada-register .register-header p {
+  margin: 0;
+  color: #777d76;
+  font-size: 13px;
+}
+
+.gada-register .register-header p a {
+  margin-left: 5px;
+  color: #c75039;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.gada-register .register-layout {
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  padding: 48px 5%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.94fr);
+  align-items: center;
+  gap: 58px;
+}
+
+.gada-register .register-form-panel {
+  width: 100%;
+  min-width: 0;
+  max-width: 550px;
+  margin: 0 auto;
+  padding: 14px 0;
+}
+
+.gada-register .register-intro {
+  margin-bottom: 27px;
+}
+
+.gada-register .register-eyebrow {
+  color: #e96448;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.8px;
+  line-height: 1.6;
+}
+
+.gada-register .register-intro h1 {
+  margin: 15px 0 12px;
+  color: #222824;
+  font-size: clamp(34px, 3.4vw, 46px);
+  line-height: 1.12;
+  letter-spacing: -2px;
+  font-weight: 800;
+}
+
+.gada-register .register-intro h1 span {
+  color: #ef6b4f;
+}
+
+.gada-register .register-intro > p {
+  max-width: 460px;
+  margin: 0;
+  color: #777d76;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.gada-register .gada-register-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.gada-register .register-field {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.gada-register .register-field label {
+  color: #303831;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.gada-register .register-field input,
+.gada-register .register-field select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 47px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #dedfd9;
+  border-radius: 9px;
+  outline: none;
+  background: #ffffff;
+  color: #252b26;
+  font-family: inherit;
+  font-size: 13px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.gada-register .register-field input::placeholder {
+  color: #a1a49e;
+}
+
+.gada-register .register-field input:focus,
+.gada-register .register-field select:focus {
+  border-color: #ef6b4f;
+  box-shadow: 0 0 0 3px rgba(239, 107, 79, 0.13);
+}
+
+.gada-register .register-field-hint {
+  color: #888e87;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.gada-register .register-primary-button {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 5px;
+  padding: 13px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  border: none;
+  border-radius: 9px;
+  background: #ef6b4f;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.gada-register .register-primary-button:hover {
+  background: #d9583d;
+  transform: translateY(-1px);
+}
+
+.gada-register .register-bottom {
+  margin-top: 22px;
+  padding-top: 19px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid #e6e4de;
+}
+
+.gada-register .register-bottom > span {
+  color: #969a93;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.3px;
+}
+
+.gada-register .register-bottom a {
+  color: #303831;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.gada-register .register-bottom a:hover {
+  color: #c75039;
+}
+
+.gada-register .register-message {
+  margin: 0;
+  padding: 13px 15px;
+  border-radius: 9px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.gada-register .register-error {
+  border: 1px solid #f0c5bf;
+  background: #fff0ee;
+  color: #a62d20;
+}
+
+.gada-register .register-success {
+  border: 1px solid #c5e4cd;
+  background: #edf8ef;
+  color: #216e35;
+}
+
+.gada-register .register-success p {
+  margin: 5px 0 9px;
+}
+
+.gada-register .register-success a {
+  color: #216e35;
+  font-weight: 800;
+}
+
+.gada-register .register-visual-panel {
+  width: 100%;
+  min-width: 0;
+  min-height: 620px;
+  padding: clamp(27px, 3.5vw, 43px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 35px;
+  overflow: hidden;
+  border-radius: 23px;
+  background:
+    radial-gradient(ellipse at 90% 5%, rgba(239, 107, 79, 0.2), transparent 40%),
+    #202a25;
+  color: #ffffff;
+}
+
+.gada-register .register-visual-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #d0d7d0;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.gada-register .register-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ef8b74;
+}
+
+.gada-register .register-headline {
+  margin: 35px 0 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-size: clamp(37px, 4vw, 54px);
+  line-height: 1.06;
+  letter-spacing: -2.5px;
+  font-weight: 800;
+}
+
+.gada-register .register-highlight {
+  color: #ef8b74;
+}
+
+.gada-register .register-visual-top > p {
+  max-width: 360px;
+  margin: 0;
+  color: #c0c9c1;
+  font-size: 12px;
+  line-height: 1.9;
+}
+
+.gada-register .register-benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.gada-register .register-benefit {
+  padding: 17px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  border-top: 1px solid #424c45;
+}
+
+.gada-register .register-benefit-number {
+  padding-top: 2px;
+  color: #ef8b74;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.gada-register .register-benefit > div {
+  min-width: 0;
+}
+
+.gada-register .register-benefit strong {
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.gada-register .register-benefit p {
+  margin: 5px 0 0;
+  color: #b9c2ba;
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.gada-register .register-visual-footer {
+  padding-top: 17px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid #424c45;
+  color: #aeb8b0;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.gada-register .register-footer {
+  min-height: 68px;
+  padding: 20px 7%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  border-top: 1px solid #eae8e1;
+  background: #ffffff;
+}
+
+.gada-register .register-footer span {
+  color: #777d76;
+  font-size: 11px;
+}
+
+.gada-register .register-footer a {
+  color: #c75039;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+@media (max-width: 900px) {
+  .gada-register .register-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 35px;
+    padding: 38px 6%;
+  }
+
+  .gada-register .register-form-panel {
+    max-width: 580px;
+  }
+
+  .gada-register .register-visual-panel {
+    max-width: 580px;
+    min-height: 570px;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .gada-register .register-header {
+    padding: 14px 5%;
+  }
+
+  .gada-register .register-brand-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .gada-register .register-header p {
+    max-width: 155px;
+    text-align: right;
+    font-size: 11px;
+    line-height: 1.7;
+  }
+
+  .gada-register .register-layout {
+    padding: 30px 5%;
+  }
+
+  .gada-register .register-intro h1 {
+    font-size: 36px;
+    letter-spacing: -1.5px;
+  }
+
+  .gada-register .register-visual-panel {
+    min-height: 550px;
+    padding: 26px;
+  }
+
+  .gada-register .register-headline {
+    font-size: 42px;
+    letter-spacing: -2px;
+  }
+
+  .gada-register .register-footer {
+    padding: 20px 5%;
+  }
+}
