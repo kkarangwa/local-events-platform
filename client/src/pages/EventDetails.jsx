@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import './EventDetails.css'
@@ -28,6 +27,15 @@ function formatTime(timeValue) {
 
   const hours = Number(match[1])
   return `${hours % 12 || 12}:${match[2]} ${hours >= 12 ? 'PM' : 'AM'}`
+}
+
+function getSessionToken() {
+  try {
+    const storedAuth = JSON.parse(localStorage.getItem('gada_auth') || 'null')
+    return storedAuth?.token || ''
+  } catch {
+    return ''
+  }
 }
 
 function EventLocationMap({ venue, title }) {
@@ -77,6 +85,107 @@ function EventLocationMap({ venue, title }) {
   )
 }
 
+function RegistrationModal({ event, formData, onChange, onClose, onSubmit, submitting, error }) {
+  return (
+    <div className="event-modal-overlay" onClick={onClose}>
+      <div
+        className="event-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="registration-modal-title"
+        onClick={(clickEvent) => clickEvent.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="event-modal-close"
+          onClick={onClose}
+          aria-label="Close registration form"
+        >
+          ×
+        </button>
+
+        <span className="event-modal-icon" aria-hidden="true">✳</span>
+
+        <p className="event-section-eyebrow">CONFIRM YOUR SPOT</p>
+        <h2 id="registration-modal-title" className="event-modal-title">
+          Register for {event.title}
+        </h2>
+        <p className="event-modal-subtitle">
+          Share your contact details so the organizer can reach you about
+          this event.
+        </p>
+
+        <form className="event-modal-form" onSubmit={onSubmit}>
+          <div className="event-form-field">
+            <label htmlFor="register-full-name">Full name</label>
+            <input
+              id="register-full-name"
+              name="full_name"
+              value={formData.full_name}
+              onChange={onChange}
+              maxLength={100}
+              placeholder="Your full name"
+              required
+            />
+          </div>
+
+          <div className="event-form-field">
+            <label htmlFor="register-email">Email address</label>
+            <input
+              id="register-email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={onChange}
+              maxLength={255}
+              placeholder="you@example.com"
+              required
+            />
+          </div>
+
+          <div className="event-form-field">
+            <label htmlFor="register-phone">Phone number</label>
+            <input
+              id="register-phone"
+              name="phone"
+              type="tel"
+              value={formData.phone}
+              onChange={onChange}
+              maxLength={20}
+              placeholder="e.g. 078 123 4567"
+              required
+            />
+          </div>
+
+          {error && (
+            <p className="event-modal-error" role="alert">{error}</p>
+          )}
+
+          <div className="event-modal-actions">
+            <button
+              type="button"
+              className="event-modal-cancel"
+              onClick={onClose}
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              className="event-primary-button"
+              disabled={submitting}
+            >
+              {submitting ? 'Registering…' : 'Confirm registration'}
+              <span aria-hidden="true">↗</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function EventDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -85,6 +194,15 @@ function EventDetails() {
   const [event, setEvent] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  const [showRegisterModal, setShowRegisterModal] = useState(false)
+  const [registering, setRegistering] = useState(false)
+  const [registerError, setRegisterError] = useState('')
+  const [registerForm, setRegisterForm] = useState({
+    full_name: '',
+    email: '',
+    phone: '',
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -124,55 +242,108 @@ function EventDetails() {
     }
   }, [id])
 
-
-async function handleRegistration() {
-  if (!user) {
-    navigate('/login', {
-      state: { from: `/events/${id}` },
-    })
-    return
-  }
-
-  if (user.role === 'organizer') {
-    navigate('/organizer-dashboard')
-    return
-  }
-
-  if (!token) {
-    navigate('/login', {
-      state: { from: `/events/${id}` },
-    })
-    return
-  }
-
-  try {
-    const response = await fetch(
-      `${API_BASE_URL}/api/participant/registrations`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ event_id: id }),
-      }
-    )
-
-    const data = await response.json()
-
-    if (!response.ok || !data.success) {
-      throw new Error(data.message || 'Registration failed.')
+  function openRegistration() {
+    if (!user) {
+      navigate('/login', {
+        state: { from: `/events/${id}` },
+      })
+      return
     }
 
-    alert(data.message || 'You have successfully registered for this event!')
+    if (user.role === 'organizer') {
+      navigate('/organizer-dashboard')
+      return
+    }
 
-    navigate('/participant-dashboard')
-  } catch (error) {
-    console.error('Event registration failed:', error)
-    alert(error.message || 'Could not register for this event. Please try again.')
+    setRegisterForm({
+      full_name: user.name || '',
+      email: user.email || '',
+      phone: '',
+    })
+    setRegisterError('')
+    setShowRegisterModal(true)
   }
-}
 
+  function closeRegistration() {
+    if (registering) return
+    setShowRegisterModal(false)
+    setRegisterError('')
+  }
+
+  function handleRegisterFormChange(changeEvent) {
+    const { name, value } = changeEvent.target
+    setRegisterForm((previous) => ({ ...previous, [name]: value }))
+    setRegisterError('')
+  }
+
+  async function submitRegistration(submitEvent) {
+    submitEvent.preventDefault()
+    setRegisterError('')
+
+    const fullName = registerForm.full_name.trim()
+    const email = registerForm.email.trim()
+    const phone = registerForm.phone.trim()
+
+    if (!fullName) {
+      setRegisterError('Please enter your full name.')
+      return
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setRegisterError('Please enter a valid email address.')
+      return
+    }
+
+    if (!/^[0-9+()\-\s]{7,20}$/.test(phone)) {
+      setRegisterError('Please enter a valid phone number.')
+      return
+    }
+
+    const token = getSessionToken()
+
+    if (!token) {
+      navigate('/login', {
+        state: { from: `/events/${id}` },
+      })
+      return
+    }
+
+    setRegistering(true)
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/events/${id}/register`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            full_name: fullName,
+            email,
+            phone,
+          }),
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Registration failed.')
+      }
+
+      setShowRegisterModal(false)
+      alert(data.message || 'You have successfully registered for this event!')
+      navigate('/participant-dashboard')
+    } catch (err) {
+      setRegisterError(
+        err.message || 'Could not register for this event. Please try again.'
+      )
+    } finally {
+      setRegistering(false)
+    }
+  }
 
   if (error || !event) {
     return (
@@ -277,7 +448,7 @@ async function handleRegistration() {
               <button
                 type="button"
                 className="event-primary-button"
-                onClick={handleRegistration}
+                onClick={openRegistration}
               >
                 {user?.role === 'organizer' ? 'Go to dashboard' : 'Get involved'}
                 <span aria-hidden="true">↗</span>
@@ -437,7 +608,7 @@ async function handleRegistration() {
               <button
                 type="button"
                 className="event-primary-button event-booking-button"
-                onClick={handleRegistration}
+                onClick={openRegistration}
               >
                 {user?.role === 'organizer' ? 'Go to dashboard' : 'Get involved'}
                 <span aria-hidden="true">↗</span>
@@ -468,6 +639,18 @@ async function handleRegistration() {
         <p>Discover your next experience in Kigali.</p>
         <Link to="/events">Explore events ↗</Link>
       </footer>
+
+      {showRegisterModal && (
+        <RegistrationModal
+          event={event}
+          formData={registerForm}
+          onChange={handleRegisterFormChange}
+          onClose={closeRegistration}
+          onSubmit={submitRegistration}
+          submitting={registering}
+          error={registerError}
+        />
+      )}
     </div>
   )
 }

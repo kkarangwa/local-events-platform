@@ -1,7 +1,7 @@
-
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import RecommendedEvents from './RecommendedEvents'
 import './Dashboard.css'
 
 const API_URL = 'http://localhost:5001'
@@ -41,55 +41,54 @@ function ParticipantDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  
-const loadRegistrations = useCallback(async () => {
-  setLoading(true)
-  setError('')
+  const loadRegistrations = useCallback(async () => {
+    setLoading(true)
+    setError('')
 
-  try {
-    const storedAuth = localStorage.getItem('gada_auth')
-    const auth = storedAuth ? JSON.parse(storedAuth) : null
-    const token = auth?.token
+    try {
+      const storedAuth = localStorage.getItem('gada_auth')
+      const auth = storedAuth ? JSON.parse(storedAuth) : null
+      const token = auth?.token
 
-    if (!token) {
-      setError('Please sign in to view your registrations.')
-      setLoading(false)
-      return
-    }
-
-    const response = await fetch(
-      `${API_URL}/api/participant/registrations`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      if (!token) {
+        setError('Please sign in to view your registrations.')
+        setLoading(false)
+        return
       }
-    )
 
-    const data = await response.json().catch(() => ({}))
-
-    if (response.status === 401) {
-      setError('Your session has expired. Please sign in again.')
-      return
-    }
-
-    if (!response.ok || !data.success) {
-      throw new Error(
-        data.message || 'Could not load your registrations.'
+      const response = await fetch(
+        `${API_URL}/api/participant/registrations`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       )
-    }
 
-    setRegistrations(data.registrations || [])
-  } catch (err) {
-    setError(
-      err instanceof SyntaxError
-        ? 'Your saved sign-in information is invalid. Please sign in again.'
-        : err.message || 'Could not load your registrations.'
-    )
-  } finally {
-    setLoading(false)
-  }
-}, [])
+      const data = await response.json().catch(() => ({}))
+
+      if (response.status === 401) {
+        setError('Your session has expired. Please sign in again.')
+        return
+      }
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message || 'Could not load your registrations.'
+        )
+      }
+
+      setRegistrations(data.registrations || [])
+    } catch (err) {
+      setError(
+        err instanceof SyntaxError
+          ? 'Your saved sign-in information is invalid. Please sign in again.'
+          : err.message || 'Could not load your registrations.'
+      )
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     loadRegistrations()
@@ -178,6 +177,8 @@ const loadRegistrations = useCallback(async () => {
             </div>
           </article>
         </section>
+
+        <RecommendedEvents />
 
         <section className="dashboard-section">
           <div className="dashboard-section-heading">
