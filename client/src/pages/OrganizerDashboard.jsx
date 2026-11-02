@@ -1,10 +1,24 @@
-
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import './Dashboard.css'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001'
+
+const AUDIENCE_TAGS = [
+  'Students',
+  'Entrepreneurs',
+  'Tech Professionals',
+  'Government & NGO',
+  'General Public',
+  'Women',
+  'Youth (18-25)',
+  'Business Leaders',
+  'Artists & Creatives',
+  'Researchers & Academics',
+]
+const AGE_RANGES = ['18-25', '26-35', '36-45', '46+']
+const EXPERIENCE_LEVELS = ['All levels', 'Beginner', 'Intermediate', 'Professional']
 
 const EMPTY_FORM = {
   title: '',
@@ -14,6 +28,9 @@ const EMPTY_FORM = {
   start_time: '09:00',
   venue: '',
   capacity: '100',
+  target_audience: [],
+  target_age_ranges: [],
+  target_experience: 'All levels',
 }
 
 function getSessionToken() {
@@ -40,11 +57,192 @@ function formatDate(date) {
   })
 }
 
+function AnalyticsSection({ analytics, events, loading }) {
+  if (loading) {
+    return (
+      <section className="dashboard-section">
+        <div className="dashboard-section-heading">
+          <div>
+            <span className="dashboard-eyebrow">PERFORMANCE</span>
+            <h2>Event analytics</h2>
+            <p>See how your published events are performing.</p>
+          </div>
+        </div>
+        <p>Loading analytics…</p>
+      </section>
+    )
+  }
+
+  if (!analytics || events.length === 0) {
+    return (
+      <section className="dashboard-section">
+        <div className="dashboard-section-heading">
+          <div>
+            <span className="dashboard-eyebrow">PERFORMANCE</span>
+            <h2>Event analytics</h2>
+            <p>See how your published events are performing.</p>
+          </div>
+        </div>
+        <div className="no-events">
+          <h3>No analytics yet.</h3>
+          <p>Create and publish an event to start seeing registration data.</p>
+        </div>
+      </section>
+    )
+  }
+
+  const sortedByRegistrations = [...events].sort(
+    (a, b) => Number(b.registrations || 0) - Number(a.registrations || 0)
+  )
+
+  const chartEvents = sortedByRegistrations.slice(0, 8)
+  const maxRegistrations = Math.max(
+    ...chartEvents.map((event) => Number(event.registrations || 0)),
+    1
+  )
+
+  const topEvents = sortedByRegistrations.slice(0, 5)
+
+  return (
+    <section className="dashboard-section">
+      <div className="dashboard-section-heading">
+        <div>
+          <span className="dashboard-eyebrow">PERFORMANCE</span>
+          <h2>Event analytics</h2>
+          <p>See how your published events are performing.</p>
+        </div>
+      </div>
+
+      <div className="dashboard-stat-grid analytics-overview-grid">
+        <article className="dashboard-stat-card">
+          <span className="dashboard-stat-icon coral">✳</span>
+          <div>
+            <p>Total events</p>
+            <strong>{analytics.totalEvents}</strong>
+            <small>{analytics.publishedEvents} published</small>
+          </div>
+        </article>
+
+        <article className="dashboard-stat-card">
+          <span className="dashboard-stat-icon green">◎</span>
+          <div>
+            <p>Total registrations</p>
+            <strong>{analytics.totalRegistrations}</strong>
+            <small>Across all your events</small>
+          </div>
+        </article>
+
+        <article className="dashboard-stat-card">
+          <span className="dashboard-stat-icon yellow">⬒</span>
+          <div>
+            <p>Capacity filled</p>
+            <strong>{analytics.capacityUsedPercent}%</strong>
+            <small>
+              {analytics.totalCapacity > 0
+                ? `${analytics.totalRegistrations} of ${analytics.totalCapacity} seats`
+                : 'No capacity set yet'}
+            </small>
+          </div>
+        </article>
+
+        <article className="dashboard-stat-card">
+          <span className="dashboard-stat-icon green">⌁</span>
+          <div>
+            <p>Available spots</p>
+            <strong>{analytics.availableSpots}</strong>
+            <small>Still open across all events</small>
+          </div>
+        </article>
+      </div>
+
+      <div className="analytics-grid">
+        <div className="analytics-chart-card">
+          <div className="dashboard-section-heading">
+            <div>
+              <h3 className="analytics-card-title">Registrations by event</h3>
+              <p className="analytics-card-subtitle">
+                Comparing your {chartEvents.length} most recent
+                {chartEvents.length === 1 ? ' event' : ' events'} by sign-ups.
+              </p>
+            </div>
+          </div>
+
+          <div className="analytics-bar-chart">
+            {chartEvents.map((event) => {
+              const registrations = Number(event.registrations || 0)
+              const widthPercent = Math.max(
+                (registrations / maxRegistrations) * 100,
+                registrations > 0 ? 4 : 0
+              )
+
+              return (
+                <div className="analytics-bar-row" key={event.id}>
+                  <span className="analytics-bar-label" title={event.title}>
+                    {event.title}
+                  </span>
+
+                  <div className="analytics-bar-track">
+                    <span
+                      className="analytics-bar-fill"
+                      style={{ width: `${widthPercent}%` }}
+                    />
+                  </div>
+
+                  <span className="analytics-bar-value">{registrations}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="analytics-chart-card">
+          <div className="dashboard-section-heading">
+            <div>
+              <h3 className="analytics-card-title">Top performing events</h3>
+              <p className="analytics-card-subtitle">
+                Ranked by number of registrations.
+              </p>
+            </div>
+          </div>
+
+          <ol className="analytics-rank-list">
+            {topEvents.map((event, index) => (
+              <li className="analytics-rank-item" key={event.id}>
+                <span className="analytics-rank-badge">{index + 1}</span>
+
+                <div className="analytics-rank-info">
+                  <strong title={event.title}>{event.title}</strong>
+                  <span>
+                    {Number(event.registrations || 0)} registration
+                    {Number(event.registrations || 0) === 1 ? '' : 's'}
+                    {event.capacity
+                      ? ` · ${event.capacity_used_percent ?? 0}% full`
+                      : ''}
+                  </span>
+                </div>
+
+                <span
+                  className={`organizer-status ${
+                    event.status === 'published' ? 'published' : 'draft'
+                  }`}
+                >
+                  {event.status}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function OrganizerDashboard() {
   const { logout, user } = useAuth()
   const navigate = useNavigate()
 
   const [events, setEvents] = useState([])
+  const [analytics, setAnalytics] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
@@ -97,6 +295,7 @@ function OrganizerDashboard() {
     try {
       const data = await request('/api/organizer/events')
       setEvents(Array.isArray(data.events) ? data.events : [])
+      setAnalytics(data.analytics || null)
     } catch (err) {
       setError(err.message || 'Could not load your events.')
     } finally {
@@ -130,9 +329,26 @@ function OrganizerDashboard() {
     setError('')
   }
 
+  function toggleFormList(field, value) {
+    setFormData((previous) => {
+      const current = previous[field]
+      return {
+        ...previous,
+        [field]: current.includes(value)
+          ? current.filter((item) => item !== value)
+          : [...current, value],
+      }
+    })
+    setMessage('')
+    setError('')
+  }
+
   function startEditing(event) {
     setEditingEventId(event.id)
     setFormData({
+      target_audience: event.target_audience || [],
+      target_age_ranges: event.target_age_ranges || [],
+      target_experience: event.target_experience || 'All levels',
       title: event.title || '',
       description: event.description || '',
       category: event.category || 'Technology',
@@ -187,6 +403,9 @@ function OrganizerDashboard() {
             start_time: formData.start_time,
             venue: formData.venue.trim(),
             capacity,
+            target_audience: formData.target_audience,
+            target_age_ranges: formData.target_age_ranges,
+            target_experience: formData.target_experience,
           }),
         }
       )
@@ -448,6 +667,58 @@ function OrganizerDashboard() {
                 />
               </div>
 
+              <div className="dashboard-form-field full-width audience-fieldset">
+                <span className="audience-fieldset-title">Who is this event for?</span>
+                <p className="audience-fieldset-hint">
+                  Answer these three quick questions so we can show your event
+                  to the right people. Leave a question empty if everyone is welcome.
+                </p>
+
+                <label>1. Who should attend?</label>
+                <div className="audience-chip-group">
+                  {AUDIENCE_TAGS.map((tag) => (
+                    <button
+                      type="button"
+                      key={tag}
+                      className={`audience-chip ${
+                        formData.target_audience.includes(tag) ? 'selected' : ''
+                      }`}
+                      onClick={() => toggleFormList('target_audience', tag)}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+
+                <label>2. Which age ranges?</label>
+                <div className="audience-chip-group">
+                  {AGE_RANGES.map((range) => (
+                    <button
+                      type="button"
+                      key={range}
+                      className={`audience-chip ${
+                        formData.target_age_ranges.includes(range) ? 'selected' : ''
+                      }`}
+                      onClick={() => toggleFormList('target_age_ranges', range)}
+                    >
+                      {range}
+                    </button>
+                  ))}
+                </div>
+
+                <label htmlFor="event-experience">3. What experience level?</label>
+                <select
+                  id="event-experience"
+                  name="target_experience"
+                  value={formData.target_experience}
+                  onChange={handleChange}
+                >
+                  {EXPERIENCE_LEVELS.map((level) => (
+                    <option key={level}>{level}</option>
+                  ))}
+                </select>
+              </div>
+
               <div className="dashboard-form-actions full-width">
                 <button
                   type="button"
@@ -502,6 +773,12 @@ function OrganizerDashboard() {
             </div>
           </article>
         </section>
+
+        <AnalyticsSection
+          analytics={analytics}
+          events={events}
+          loading={loading}
+        />
 
         <section className="dashboard-section">
           <div className="dashboard-section-heading">
@@ -560,6 +837,21 @@ function OrganizerDashboard() {
 
                       <div className="organizer-progress">
                         <span style={{ width: `${percentage}%` }} />
+                      </div>
+
+                      <div className="organizer-insights">
+                        <span>
+                          Est. attendance{' '}
+                          <strong>{event.estimated_attendance ?? 0}</strong>
+                        </span>
+                        <span>
+                          Audience match{' '}
+                          <strong>
+                            {event.audience_match_percent == null
+                              ? '—'
+                              : `${event.audience_match_percent}%`}
+                          </strong>
+                        </span>
                       </div>
                     </div>
 
