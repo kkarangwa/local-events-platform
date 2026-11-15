@@ -11,9 +11,10 @@ const CATEGORIES = [
   'All Events',
   'Technology',
   'Business',
-  'Creative',
-  'Community',
+  'Arts & Culture',
   'Education',
+  'Community',
+  'Music & Entertainment',
   'Networking',
 ]
 

@@ -587,6 +587,45 @@ footer p {
   color: white;
 }
 
+.active-filter:hover {
+  color: white;
+}
+
+.filter,
+.quick-filter {
+  cursor: pointer;
+}
+
+.event-quick-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.quick-filter {
+  border: 1px solid #ded9d1;
+  background: #fbf8f4;
+  color: #33302d;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.quick-filter:hover {
+  border-color: #ef6b4f;
+  color: #ef6b4f;
+}
+
+.active-quick-filter,
+.active-quick-filter:hover {
+  background: #ef6b4f;
+  border-color: #ef6b4f;
+  color: white;
+}
+
 /* Events Listing */
 
 .all-events-section {

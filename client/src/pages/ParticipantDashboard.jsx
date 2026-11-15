@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import RecommendedEvents from './RecommendedEvents'
 import './Dashboard.css'
 
-const API_URL = 'http://localhost:5001'
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5001').replace(/\/$/, '')
 
 function formatDate(dateValue) {
   if (!dateValue) return 'Date to be announced'

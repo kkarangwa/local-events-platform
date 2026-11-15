@@ -217,6 +217,16 @@ local-events-platform/
 
 The structure is representative of the main project directories. Individual files and additional configuration files are available in the repository.
 
+## Deployment (Render)
+
+The repository includes a `render.yaml` Blueprint that creates the PostgreSQL database, the API and the website.
+
+1. In Render, choose **New > Blueprint** and select this repository.
+2. When asked, set `CLIENT_ORIGIN` on **gada-events-api** to the website URL and `VITE_API_URL` on **gada-events** to the API URL.
+3. Deploy. On first start the API creates the tables from `server/db/schema.sql`.
+
+Free Render web services sleep after a period without traffic, so the first request after a pause can take up to a minute.
+
 ## 7. Installation and Setup
 
 Follow the instructions below to run Gada Events locally.

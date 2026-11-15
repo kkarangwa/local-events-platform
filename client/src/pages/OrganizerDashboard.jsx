@@ -64,6 +64,11 @@ function OrganizerDashboard() {
   const [events, setEvents] = useState([])
   const [analytics, setAnalytics] = useState(null)
   const [loading, setLoading] = useState(true)
+  const publishedEvents = events.filter((item) => item.status === 'published')
+  const totalRegistrations = events.reduce(
+    (sum, item) => sum + Number(item.registrations || 0),
+    0,
+  )
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editingEventId, setEditingEventId] = useState(null)
@@ -411,6 +416,7 @@ function OrganizerDashboard() {
                   <option>Education</option>
                   <option>Community</option>
                   <option>Music & Entertainment</option>
+                  <option>Networking</option>
                 </select>
               </div>
 

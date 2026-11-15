@@ -9,7 +9,7 @@ const API_BASE_URL =
 function formatDate(dateValue) {
   if (!dateValue) return 'Date to be announced'
 
-  const date = new Date(dateValue)
+  const date = new Date(`${String(dateValue).slice(0, 10)}T12:00:00`)
   if (Number.isNaN(date.getTime())) return dateValue
 
   return date.toLocaleDateString('en-GB', {
@@ -361,21 +361,21 @@ function EventDetails() {
   }
 
   const organizerName =
-    event.organizer_name ||
     event.organizer_company ||
+    event.organizer_name ||
     event.company_name ||
     'Gada Events Organizer'
 
   const organizerDescription =
+    event.organizer_company_description ||
     event.company_description ||
-    event.organizer_description ||
     'Discover experiences and connect with the Kigali community.'
 
   const organizerWebsite =
     event.company_website || event.organizer_website || ''
 
   const organizerEmail =
-    event.company_email || event.organizer_email || ''
+    event.organizer_company_email || event.company_email || ''
 
   const venue = event.venue || 'Kigali, Rwanda'
   const dateText = formatDate(event.event_date)

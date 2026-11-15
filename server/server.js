@@ -1,6 +1,6 @@
 const express = require('express')
 const cors = require('cors')
-const { Pool } = require('pg')
+const { Pool, types } = require('pg')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 require('dotenv').config()
@@ -13,13 +13,28 @@ if (!JWT_SECRET) {
   throw new Error('JWT_SECRET is missing from server/.env')
 }
 
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT) || 5432,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-})
+// Return DATE columns as plain 'YYYY-MM-DD' strings. Without this, pg turns them
+// into JavaScript Dates at local midnight, and on Kigali time (UTC+2) the JSON
+// output shows the previous day.
+types.setTypeParser(1082, (value) => value)
+
+const pool = new Pool(
+  process.env.DATABASE_URL
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl:
+          process.env.DB_SSL === 'false'
+            ? false
+            : { rejectUnauthorized: false },
+      }
+    : {
+        host: process.env.DB_HOST,
+        port: Number(process.env.DB_PORT) || 5432,
+        database: process.env.DB_NAME,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+      },
+)
 
 pool.on('error', (error) => {
   console.error('Unexpected PostgreSQL pool error:', error.message)
@@ -1049,7 +1064,7 @@ app.post('/api/ussd', async (req, res) => {
       if (!event) {
         response = 'END Invalid selection.'
       } else {
-        const dateText = new Date(event.event_date).toLocaleDateString('en-GB', {
+        const dateText = new Date(`${String(event.event_date).slice(0, 10)}T12:00:00`).toLocaleDateString('en-GB', {
           day: 'numeric',
           month: 'short',
         })
@@ -1972,13 +1987,32 @@ app.use((req, res) => {
 
 console.log('About to start Gada API...')
 
-const server = app.listen(PORT, () => {
-  console.log(`Gada Events API running at http://localhost:${PORT}`)
-})
+async function ensureSchema() {
+  // Creates any missing tables or columns so a fresh database (for example on
+  // Render) is ready on first start. Set AUTO_MIGRATE=false to skip.
+  if (process.env.AUTO_MIGRATE === 'false') return
+  const fs = require('fs')
+  const path = require('path')
+  const sql = fs.readFileSync(path.join(__dirname, 'db', 'schema.sql'), 'utf8')
+  await pool.query(sql)
+  console.log('Database schema checked.')
+}
 
-server.on('error', (error) => {
-  console.error('Gada server error:', error)
-})
+let server
+
+ensureSchema()
+  .catch((error) => {
+    console.error('Schema check failed:', error.message)
+  })
+  .finally(() => {
+    server = app.listen(PORT, () => {
+      console.log(`Gada Events API running on port ${PORT}`)
+    })
+
+    server.on('error', (error) => {
+      console.error('Gada server error:', error)
+    })
+  })
 
 process.on('exit', (code) => {
   console.log('Node process exiting with code:', code)
