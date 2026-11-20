@@ -23,6 +23,8 @@ services:
           property: connectionString
       - key: JWT_SECRET
         generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
       - key: CLIENT_ORIGIN
         sync: false # set to the website URL, e.g. https://gada-events.onrender.com
 
