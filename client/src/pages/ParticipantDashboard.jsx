@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import DeleteAccount from './DeleteAccount'
+import FeedbackForm from './FeedbackForm'
 import RecommendedEvents from './RecommendedEvents'
 import './Dashboard.css'
 
@@ -40,6 +42,7 @@ function ParticipantDashboard() {
   const [registrations, setRegistrations] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [feedbackEvent, setFeedbackEvent] = useState(null)
 
   const loadRegistrations = useCallback(async () => {
     setLoading(true)
@@ -240,12 +243,24 @@ function ParticipantDashboard() {
                       <span />
                       {event.registration_status || 'Registered'}
                     </span>
-                    <Link
-                      to={`/events/${event.id}`}
-                      className="dashboard-outline-button"
-                    >
-                      View event
-                    </Link>
+                    {event.event_has_started ? (
+                      <button
+                        type="button"
+                        className={`feedback-rate-button${event.feedback_rating ? ' given' : ''}`}
+                        onClick={() => setFeedbackEvent(event)}
+                      >
+                        {event.feedback_rating
+                          ? `★ ${event.feedback_rating} · Edit feedback`
+                          : '★ Rate this event'}
+                      </button>
+                    ) : (
+                      <Link
+                        to={`/events/${event.id}`}
+                        className="dashboard-outline-button"
+                      >
+                        View event
+                      </Link>
+                    )}
                   </div>
                 </article>
               ))}
@@ -265,11 +280,34 @@ function ParticipantDashboard() {
             Browse events →
           </Link>
         </section>
+        <DeleteAccount />
       </main>
+
+      {feedbackEvent && (
+        <FeedbackForm
+          event={feedbackEvent}
+          onClose={() => setFeedbackEvent(null)}
+          onSaved={(saved) =>
+            setRegistrations((current) =>
+              current.map((item) =>
+                item.registration_id === feedbackEvent.registration_id
+                  ? {
+                      ...item,
+                      feedback_rating: saved.rating,
+                      feedback_liked: saved.liked,
+                      feedback_improve: saved.improve,
+                      feedback_want_next: saved.want_next,
+                    }
+                  : item
+              )
+            )
+          }
+        />
+      )}
 
       <footer className="dashboard-footer">
         <span>© 2026 Gada Events</span>
-        <span>Discover. Register. Experience.</span>
+        <Link to="/privacy">Privacy Policy</Link>
       </footer>
     </div>
   )

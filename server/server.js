@@ -4,6 +4,7 @@ const { Pool, types } = require('pg')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 require('dotenv').config()
+const { generateInsights, stats: feedbackStats } = require('./insights')
 
 const app = express()
 const PORT = Number(process.env.PORT) || 5001
@@ -118,94 +119,15 @@ function requireRole(...roles) {
   }
 }
 
-// Allowed audience/interest tags, reused for both an event's target
-// audience and a participant's own interests so they can be matched.
-const AUDIENCE_TAGS = [
-  'Students',
-  'Entrepreneurs',
-  'Tech Professionals',
-  'Government & NGO',
-  'General Public',
-  'Women',
-  'Youth (18-25)',
-  'Business Leaders',
-  'Artists & Creatives',
-  'Researchers & Academics',
-]
-
-function validateAudienceTags(tags) {
-  if (tags === undefined) return { value: [] }
-  if (!Array.isArray(tags)) return { error: 'Target audience must be a list of tags.' }
-  if (tags.length > 8) return { error: 'Choose at most 8 target audience tags.' }
-
-  const invalid = tags.filter((tag) => !AUDIENCE_TAGS.includes(tag))
-  if (invalid.length > 0) {
-    return { error: `Unrecognized audience tag: ${invalid[0]}` }
-  }
-
-  return { value: [...new Set(tags)] }
-}
-
-const AGE_RANGES = ['18-25', '26-35', '36-45', '46+']
-const EXPERIENCE_LEVELS = ['Beginner', 'Intermediate', 'Professional']
-
-// Organizer's short "who is this for?" answers (age ranges + experience level)
-function validateTargeting(body = {}) {
-  const ageRanges = body.target_age_ranges === undefined ? [] : body.target_age_ranges
-
-  if (!Array.isArray(ageRanges) || ageRanges.some((age) => !AGE_RANGES.includes(age))) {
-    return { error: 'Choose valid target age ranges.' }
-  }
-
-  const experience =
-    body.target_experience === undefined || body.target_experience === ''
-      ? 'All levels'
-      : body.target_experience
-
-  if (!['All levels', ...EXPERIENCE_LEVELS].includes(experience)) {
-    return { error: 'Choose a valid target experience level.' }
-  }
-
-  return { age_ranges: [...new Set(ageRanges)], experience }
-}
-
-function hasTargeting(event) {
-  return (
-    (event.target_audience || []).length > 0 ||
-    (event.target_age_ranges || []).length > 0 ||
-    (event.target_experience && event.target_experience !== 'All levels')
-  )
-}
-
-// Match score between an event's target and a participant's profile (0-100):
-//   interests 50 pts, age range 25 pts, experience level 25 pts.
-// A part the organizer left open ("everyone") counts as a full match.
-function computeMatchScore(event, profile = {}) {
-  const eventTags = event.target_audience || []
-  const eventAges = event.target_age_ranges || []
-  const eventLevel = event.target_experience || 'All levels'
-  const interests = profile.interests || []
-
-  let score = 0
-
-  if (eventTags.length === 0) {
-    score += 50
-  } else {
-    const overlap = eventTags.filter((tag) => interests.includes(tag)).length
-    const needed = Math.min(2, eventTags.length)
-    score += overlap >= needed ? 50 : overlap >= 1 ? 35 : 0
-  }
-
-  if (eventAges.length === 0 || (profile.age_range && eventAges.includes(profile.age_range))) {
-    score += 25
-  }
-
-  if (eventLevel === 'All levels' || profile.experience_level === eventLevel) {
-    score += 25
-  }
-
-  return score
-}
+const {
+  AUDIENCE_TAGS,
+  AGE_RANGES,
+  EXPERIENCE_LEVELS,
+  validateAudienceTags,
+  validateTargeting,
+  hasTargeting,
+  computeMatchScore,
+} = require('./matching')
 
 // Shared event fields and public organizer information.
 const eventSelect = `
@@ -294,7 +216,17 @@ app.post('/api/auth/register', async (req, res) => {
       email,
       password,
       role = 'participant',
+      acceptPrivacy,
     } = req.body || {}
+
+    // Consent first: no account is created unless the person has agreed
+    // to the Privacy Policy. The time of consent is stored with the user.
+    if (acceptPrivacy !== true) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please read and accept the Privacy Policy to create an account.',
+      })
+    }
 
     if (
       typeof name !== 'string' ||
@@ -332,8 +264,8 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO users (name, email, password_hash, role)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO users (name, email, password_hash, role, privacy_consent_at)
+       VALUES ($1, $2, $3, $4, NOW())
        RETURNING id, name, email, role, created_at,
                  company_name, company_website, company_email,
                  company_description`,
@@ -461,6 +393,68 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
       success: false,
       message: 'Could not verify your session.',
     })
+  }
+})
+
+// DELETE MY ACCOUNT (right to erasure)
+// The user confirms with their password. Everything tied to the account is
+// removed in one transaction: their registrations, and for organizers their
+// events and the registrations made for those events.
+app.delete('/api/auth/me', requireAuth, async (req, res) => {
+  const { password } = req.body || {}
+
+  if (typeof password !== 'string' || !password) {
+    return res.status(400).json({
+      success: false,
+      message: 'Enter your password to confirm.',
+    })
+  }
+
+  const client = await pool.connect()
+
+  try {
+    const found = await client.query(
+      'SELECT id, role, password_hash FROM users WHERE id = $1',
+      [req.auth.userId]
+    )
+    const record = found.rows[0]
+
+    if (!record || !(await bcrypt.compare(password, record.password_hash))) {
+      return res.status(401).json({
+        success: false,
+        message: 'Password is incorrect. Your account was not deleted.',
+      })
+    }
+
+    await client.query('BEGIN')
+
+    if (record.role === 'organizer') {
+      await client.query(
+        `DELETE FROM registrations
+         WHERE event_id IN (SELECT id FROM events WHERE organizer_id = $1)`,
+        [record.id]
+      )
+      await client.query('DELETE FROM events WHERE organizer_id = $1', [record.id])
+    }
+
+    await client.query('DELETE FROM registrations WHERE participant_id = $1', [record.id])
+    await client.query('DELETE FROM users WHERE id = $1', [record.id])
+    await client.query('COMMIT')
+
+    res.json({
+      success: true,
+      message: 'Your account and personal data have been deleted.',
+    })
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
+    console.error('Account deletion failed:', error.message)
+
+    res.status(500).json({
+      success: false,
+      message: 'Could not delete the account. Nothing was removed.',
+    })
+  } finally {
+    client.release()
   }
 })
 
@@ -1077,7 +1071,7 @@ app.post('/api/ussd', async (req, res) => {
 
     // ASK FOR NAME
     } else if (input[0] === '1' && input.length === 3 && input[2] === '1') {
-      response = 'CON Enter your full name:'
+      response = 'CON Your name and phone number are shared only with this event\'s organizer.\nEnter your full name:'
 
     // AFTER NAME: free events finish here, paid events ask for payment code
     } else if (input[0] === '1' && input.length === 4 && input[2] === '1') {
@@ -1506,6 +1500,8 @@ app.get(
              0
            )::numeric(10,1) AS estimated_attendance,
            COUNT(r.participant_id) AS registrations_with_account,
+           (SELECT COUNT(*) FROM event_feedback f WHERE f.event_id = e.id)::integer AS feedback_count,
+           (SELECT ROUND(AVG(f.rating)::numeric, 1) FROM event_feedback f WHERE f.event_id = e.id) AS average_rating,
            COUNT(
              CASE
                WHEN array_length(e.target_audience, 1) > 0
@@ -1948,9 +1944,15 @@ app.get(
            e.start_time,
            e.price_type,
            e.price,
-           e.currency
+           e.currency,
+           e.event_date <= (NOW() AT TIME ZONE 'Africa/Kigali')::date AS event_has_started,
+           f.rating AS feedback_rating,
+           f.liked AS feedback_liked,
+           f.improve AS feedback_improve,
+           f.want_next AS feedback_want_next
          FROM registrations r
          JOIN events e ON e.id = r.event_id
+         LEFT JOIN event_feedback f ON f.event_id = e.id AND f.participant_id = r.participant_id
          WHERE r.participant_id = $1
          ORDER BY e.event_date ASC, e.start_time ASC`,
         [req.auth.userId]
@@ -1967,6 +1969,201 @@ app.get(
         success: false,
         message: 'Could not retrieve your registrations.',
       })
+    }
+  }
+)
+
+// ---------------- POST-EVENT FEEDBACK & INSIGHTS ----------------
+
+function cleanFeedbackText(value) {
+  const text = typeof value === 'string' ? value.trim() : ''
+  return text ? text.slice(0, 500) : null
+}
+
+// PARTICIPANT: LEAVE OR UPDATE FEEDBACK FOR AN EVENT THEY REGISTERED FOR
+app.post(
+  '/api/events/:id/feedback',
+  requireAuth,
+  requireRole('participant'),
+  async (req, res) => {
+    try {
+      const eventId = Number(req.params.id)
+      const rating = Number(req.body?.rating)
+
+      if (!Number.isSafeInteger(eventId) || eventId < 1) {
+        return res.status(400).json({ success: false, message: 'Invalid event ID.' })
+      }
+
+      if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+        return res.status(400).json({ success: false, message: 'Choose a rating from 1 to 5 stars.' })
+      }
+
+      const check = await pool.query(
+        `SELECT e.event_date <= (NOW() AT TIME ZONE 'Africa/Kigali')::date AS started
+         FROM registrations r
+         JOIN events e ON e.id = r.event_id
+         WHERE r.event_id = $1 AND r.participant_id = $2
+         LIMIT 1`,
+        [eventId, req.auth.userId]
+      )
+
+      if (!check.rows[0]) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only people registered for this event can leave feedback.',
+        })
+      }
+
+      if (!check.rows[0].started) {
+        return res.status(400).json({
+          success: false,
+          message: 'You can leave feedback once the event has taken place.',
+        })
+      }
+
+      await pool.query(
+        `INSERT INTO event_feedback (event_id, participant_id, rating, liked, improve, want_next)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (event_id, participant_id) DO UPDATE
+         SET rating = EXCLUDED.rating,
+             liked = EXCLUDED.liked,
+             improve = EXCLUDED.improve,
+             want_next = EXCLUDED.want_next,
+             created_at = NOW()`,
+        [
+          eventId,
+          req.auth.userId,
+          rating,
+          cleanFeedbackText(req.body?.liked),
+          cleanFeedbackText(req.body?.improve),
+          cleanFeedbackText(req.body?.want_next),
+        ]
+      )
+
+      res.json({ success: true, message: 'Thank you! Your feedback was sent to the organizer.' })
+    } catch (error) {
+      console.error('Failed to save feedback:', error.message)
+      res.status(500).json({ success: false, message: 'Could not save your feedback.' })
+    }
+  }
+)
+
+async function loadOwnedEventFeedback(eventId, organizerId) {
+  const owned = await pool.query(
+    'SELECT id, title FROM events WHERE id = $1 AND organizer_id = $2 LIMIT 1',
+    [eventId, organizerId]
+  )
+
+  if (!owned.rows[0]) return null
+
+  // Anonymous on purpose: organizers see what was said, not who said it.
+  const feedback = await pool.query(
+    `SELECT rating, liked, improve, want_next, created_at
+     FROM event_feedback
+     WHERE event_id = $1
+     ORDER BY created_at DESC`,
+    [eventId]
+  )
+
+  return { event: owned.rows[0], feedback: feedback.rows }
+}
+
+// ORGANIZER: SEE ANONYMOUS FEEDBACK AND THE LATEST SUMMARY FOR ONE OF THEIR EVENTS
+app.get(
+  '/api/organizer/events/:id/feedback',
+  requireAuth,
+  requireRole('organizer'),
+  async (req, res) => {
+    try {
+      const eventId = Number(req.params.id)
+
+      if (!Number.isSafeInteger(eventId) || eventId < 1) {
+        return res.status(400).json({ success: false, message: 'Invalid event ID.' })
+      }
+
+      const data = await loadOwnedEventFeedback(eventId, req.auth.userId)
+
+      if (!data) {
+        return res.status(404).json({
+          success: false,
+          message: 'Event not found, or you do not have permission to view it.',
+        })
+      }
+
+      const saved = await pool.query(
+        'SELECT insights, source, feedback_count, generated_at FROM event_insights WHERE event_id = $1',
+        [eventId]
+      )
+
+      const distribution = [5, 4, 3, 2, 1].map((stars) => ({
+        stars,
+        count: data.feedback.filter((row) => Number(row.rating) === stars).length,
+      }))
+
+      res.json({
+        success: true,
+        event: data.event,
+        ...feedbackStats(data.feedback),
+        distribution,
+        feedback: data.feedback,
+        insights: saved.rows[0]
+          ? { ...saved.rows[0], outdated: saved.rows[0].feedback_count !== data.feedback.length }
+          : null,
+      })
+    } catch (error) {
+      console.error('Failed to load feedback:', error.message)
+      res.status(500).json({ success: false, message: 'Could not load feedback for this event.' })
+    }
+  }
+)
+
+// ORGANIZER: GENERATE A NEW AI SUMMARY OF THE FEEDBACK
+app.post(
+  '/api/organizer/events/:id/insights',
+  requireAuth,
+  requireRole('organizer'),
+  async (req, res) => {
+    try {
+      const eventId = Number(req.params.id)
+
+      if (!Number.isSafeInteger(eventId) || eventId < 1) {
+        return res.status(400).json({ success: false, message: 'Invalid event ID.' })
+      }
+
+      const data = await loadOwnedEventFeedback(eventId, req.auth.userId)
+
+      if (!data) {
+        return res.status(404).json({
+          success: false,
+          message: 'Event not found, or you do not have permission to view it.',
+        })
+      }
+
+      if (data.feedback.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'There is no feedback to summarise yet.',
+        })
+      }
+
+      const { source, insights } = await generateInsights(data.event.title, data.feedback)
+
+      const saved = await pool.query(
+        `INSERT INTO event_insights (event_id, insights, source, feedback_count, generated_at)
+         VALUES ($1, $2, $3, $4, NOW())
+         ON CONFLICT (event_id) DO UPDATE
+         SET insights = EXCLUDED.insights,
+             source = EXCLUDED.source,
+             feedback_count = EXCLUDED.feedback_count,
+             generated_at = NOW()
+         RETURNING insights, source, feedback_count, generated_at`,
+        [eventId, JSON.stringify(insights), source, data.feedback.length]
+      )
+
+      res.json({ success: true, insights: { ...saved.rows[0], outdated: false } })
+    } catch (error) {
+      console.error('Failed to generate insights:', error.message)
+      res.status(500).json({ success: false, message: 'Could not summarise the feedback right now.' })
     }
   }
 )

@@ -5,6 +5,7 @@ import Events from './pages/Events'
 import EventDetails from './pages/EventDetails'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import Privacy from './pages/Privacy'
 import ParticipantDashboard from './pages/ParticipantDashboard'
 import OrganizerDashboard from './pages/OrganizerDashboard'
 import { AuthProvider } from './auth/AuthContext'
@@ -22,6 +23,7 @@ function App() {
           <Route path="/events/:id" element={<EventDetails />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/privacy" element={<Privacy />} />
 
           <Route
             path="/participant-dashboard"

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import DeleteAccount from './DeleteAccount'
+import FeedbackInsights from './FeedbackInsights'
 import './Dashboard.css'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001'
@@ -73,6 +75,7 @@ function OrganizerDashboard() {
   const [showForm, setShowForm] = useState(false)
   const [editingEventId, setEditingEventId] = useState(null)
   const [message, setMessage] = useState('')
+  const [insightsEvent, setInsightsEvent] = useState(null)
   const [error, setError] = useState('')
 
   const [formData, setFormData] = useState({ ...EMPTY_FORM })
@@ -666,6 +669,18 @@ function OrganizerDashboard() {
                       </div>
                     </div>
 
+                    {event.status === 'published' && (
+                      <button
+                        type="button"
+                        className="feedback-rate-button organizer-feedback-button"
+                        onClick={() => setInsightsEvent(event)}
+                      >
+                        {Number(event.feedback_count) > 0
+                          ? `★ ${event.average_rating} · ${event.feedback_count} feedback · AI insights`
+                          : '★ Feedback & AI insights'}
+                      </button>
+                    )}
+
                     <div className="organizer-event-actions">
                       <button
                         type="button"
@@ -784,11 +799,16 @@ function OrganizerDashboard() {
             </div>
           </form>
         </section>
+        <DeleteAccount />
       </main>
+
+      {insightsEvent && (
+        <FeedbackInsights event={insightsEvent} onClose={() => setInsightsEvent(null)} />
+      )}
 
       <footer className="dashboard-footer">
         <span>© 2026 Gada Events</span>
-        <span>Discover. Register. Experience.</span>
+        <Link to="/privacy">Privacy Policy</Link>
       </footer>
     </div>
   )

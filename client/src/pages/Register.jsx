@@ -1,4 +1,5 @@
 
+import './Privacy.css'
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
@@ -20,6 +21,7 @@ function Register() {
     password: '',
     confirmPassword: '',
     role: 'participant',
+    acceptPrivacy: false,
   })
 
   const [showPassword, setShowPassword] = useState(false)
@@ -46,11 +48,11 @@ function Register() {
   }
 
   function handleChange(event) {
-    const { name, value } = event.target
+    const { name, value, type, checked } = event.target
 
     setFormData((current) => ({
       ...current,
-      [name]: value,
+      [name]: type === 'checkbox' ? checked : value,
     }))
 
     setError('')
@@ -78,6 +80,11 @@ function Register() {
       return
     }
 
+    if (!formData.acceptPrivacy) {
+      setError('Please read and accept the Privacy Policy to continue.')
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -86,6 +93,7 @@ function Register() {
         email,
         password: formData.password,
         role: formData.role,
+        acceptPrivacy: formData.acceptPrivacy,
       })
 
       navigate(dashboardForRole(newUser.role), {
@@ -265,6 +273,24 @@ function Register() {
                 </button>
               </div>
             </div>
+
+            <label className="auth-consent" htmlFor="register-consent">
+              <input
+                id="register-consent"
+                name="acceptPrivacy"
+                type="checkbox"
+                checked={formData.acceptPrivacy}
+                onChange={handleChange}
+              />
+              <span>
+                I have read the{' '}
+                <Link to="/privacy" target="_blank" rel="noopener">
+                  Privacy Policy
+                </Link>{' '}
+                and agree that Gada Events can store my details to run my
+                account and event registrations.
+              </span>
+            </label>
 
             {error && (
               <p

@@ -113,6 +113,7 @@ function Home() {
           <Link to="/">Home</Link>
           <Link to="/events">Events</Link>
           <a href="/#about">About</a>
+          <Link to="/privacy">Privacy</Link>
         </div>
 
         <div className="nav-actions">
@@ -458,6 +459,7 @@ function Home() {
           <Link to="/">Home</Link>
           <Link to="/events">Events</Link>
           <a href="/#about">About</a>
+          <Link to="/privacy">Privacy</Link>
         </div>
       </footer>
     </div>
