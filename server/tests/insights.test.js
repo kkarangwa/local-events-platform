@@ -1,3 +1,4 @@
+process.env.GEMINI_RETRY_DELAY_MS = '0'
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { basicInsights, buildPrompt, stats, generateInsights } = require('../insights')
@@ -59,6 +60,39 @@ test('a valid AI reply is turned into the four insight parts', async () => {
   const { source, insights } = await generateInsights('Event', feedback)
   assert.equal(source, 'ai')
   assert.deepEqual(insights, reply)
+  global.fetch = savedFetch
+  if (savedKey) process.env.GEMINI_API_KEY = savedKey
+  else delete process.env.GEMINI_API_KEY
+})
+
+test('a busy Gemini (503) is retried once, and the second answer is used', async () => {
+  const savedKey = process.env.GEMINI_API_KEY
+  const savedFetch = global.fetch
+  process.env.GEMINI_API_KEY = 'test-key'
+  const reply = { summary: 'Attendees liked the speakers.', liked: ['Speakers'], improve: [], next_ideas: [] }
+  let calls = 0
+  global.fetch = async () => {
+    calls += 1
+    if (calls === 1) return { ok: false, status: 503, json: async () => ({}) }
+    return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify(reply) }] } }] }) }
+  }
+  const { source } = await generateInsights('Event', feedback)
+  assert.equal(source, 'ai')
+  assert.equal(calls, 2)
+  global.fetch = savedFetch
+  if (savedKey) process.env.GEMINI_API_KEY = savedKey
+  else delete process.env.GEMINI_API_KEY
+})
+
+test('a wrong API key (403) is not retried and falls back straight away', async () => {
+  const savedKey = process.env.GEMINI_API_KEY
+  const savedFetch = global.fetch
+  process.env.GEMINI_API_KEY = 'test-key'
+  let calls = 0
+  global.fetch = async () => { calls += 1; return { ok: false, status: 403, json: async () => ({}) } }
+  const { source } = await generateInsights('Event', feedback)
+  assert.equal(source, 'basic')
+  assert.equal(calls, 1)
   global.fetch = savedFetch
   if (savedKey) process.env.GEMINI_API_KEY = savedKey
   else delete process.env.GEMINI_API_KEY

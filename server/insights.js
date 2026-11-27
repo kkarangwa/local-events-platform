@@ -122,7 +122,9 @@ async function geminiInsights(eventTitle, feedback, apiKey) {
     )
 
     if (!response.ok) {
-      throw new Error(`Gemini responded ${response.status}`)
+      const error = new Error(`Gemini responded ${response.status}`)
+      error.status = response.status
+      throw error
     }
 
     const data = await response.json()
@@ -143,14 +145,29 @@ async function geminiInsights(eventTitle, feedback, apiKey) {
   }
 }
 
+// Google answers 429 (busy, rate limited) or 5xx (e.g. 503 overloaded) for short
+// periods. Those are worth one more try; a wrong key (400/403) is not.
+const RETRYABLE = new Set([429, 500, 502, 503, 504])
+const RETRY_DELAY_MS = Number(process.env.GEMINI_RETRY_DELAY_MS || 2000)
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
 async function generateInsights(eventTitle, feedback) {
   const apiKey = process.env.GEMINI_API_KEY
 
   if (apiKey) {
-    try {
-      return { source: 'ai', insights: await geminiInsights(eventTitle, feedback, apiKey) }
-    } catch (error) {
-      console.error('AI insights failed, using basic analysis:', error.message)
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      try {
+        return { source: 'ai', insights: await geminiInsights(eventTitle, feedback, apiKey) }
+      } catch (error) {
+        const retry = attempt === 1 && RETRYABLE.has(error.status)
+        console.error(
+          `AI insights failed (attempt ${attempt})${retry ? ', retrying' : ', using basic analysis'}:`,
+          error.message
+        )
+        if (!retry) break
+        await wait(RETRY_DELAY_MS)
+      }
     }
   }
 

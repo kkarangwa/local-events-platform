@@ -1,554 +1,413 @@
 # Gada Events
-### A Digital Platform for Managing Local Events and Participant Registration
+### A digital platform for career and learning events in Kigali
 
-[![React](https://img.shields.io/badge/React-19.2.8-blue)](https://react.dev/)
-[![Node.js](https://img.shields.io/badge/Node.js-24.21.0-green)](https://nodejs.org/)
-[![Express](https://img.shields.io/badge/Express-5.3.0-lightgrey)](https://expressjs.com/)
-[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-blue)](https://www.postgresql.org/)
-[![Vite](https://img.shields.io/badge/Vite-8.3.2-purple)](https://vite.dev/)
+[![React](https://img.shields.io/badge/React-19-blue)](https://react.dev/)
+[![Node.js](https://img.shields.io/badge/Node.js-22-green)](https://nodejs.org/)
+[![Express](https://img.shields.io/badge/Express-5-lightgrey)](https://expressjs.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%2B-blue)](https://www.postgresql.org/)
+[![Tests](https://img.shields.io/badge/unit%20tests-22%20passing-brightgreen)](#8-running-the-tests)
 
-**Project Type:** Individual Final-Year Software Engineering Capstone  
-**Institution:** African Leadership University  
-**Project Scope:** Kigali, Rwanda  
-**Developer:** Kethia Karangwa  
-**Repository:** https://github.com/kkarangwa/local-events-platform
+| | |
+|---|---|
+| **Live website** | https://gada-events.onrender.com |
+| **Live API** | https://gada-events-api.onrender.com (health check: `/api/db-health`) |
+| **Repository** | https://github.com/kkarangwa/local-events-platform |
+| **Developer** | Karangwa Kethia, BSc Software Engineering, African Leadership University |
+| **Supervisor** | David Ineza Tuyishimire |
+
+> The live site runs on Render's free plan. After a quiet period the API sleeps, so the **first** request can take up to a minute. Open the site once, wait, then use it normally.
 
 ---
 
-## 1. Project Overview
+## Contents
 
-Gada Events is a web-based platform developed to simplify local event management and participant registration in Kigali, Rwanda.
+1. [What Gada Events does](#1-what-gada-events-does)
+2. [Features](#2-features)
+3. [Technology stack](#3-technology-stack)
+4. [Project structure](#4-project-structure)
+5. [Run it on your computer (step by step)](#5-run-it-on-your-computer-step-by-step)
+6. [Try every feature with the demo accounts](#6-try-every-feature-with-the-demo-accounts)
+7. [Environment variables](#7-environment-variables)
+8. [Running the tests](#8-running-the-tests)
+9. [API reference](#9-api-reference)
+10. [Database](#10-database)
+11. [How the main features work](#11-how-the-main-features-work)
+12. [Deploying to Render](#12-deploying-to-render)
+13. [Troubleshooting](#13-troubleshooting)
+14. [Security and privacy](#14-security-and-privacy)
+15. [Limitations and future work](#15-limitations-and-future-work)
+16. [Demonstration video and report](#16-demonstration-video-and-report)
 
-The platform addresses challenges associated with event organization, event discovery, participant registration and attendance management. It provides a centralized digital environment where event organizers can create and manage events while participants can discover events, register and manage their participation.
+---
 
-The application supports three primary user roles:
+## 1. What Gada Events does
 
-- **Participants:** Discover events, register for events and manage their registrations.
-- **Event Organizers:** Create, publish and manage events, monitor registrations and manage attendance.
-- **Administrators:** Manage users, events and administrative activities.
+Career and learning events in Kigali (trainings, workshops, networking events) are usually posted only on each organizer's own social media, so people outside that circle never hear about them. Organizers also cannot tell whether they reached the right people, and free events rarely collect feedback.
 
-Gada Events also includes a Recommended Events feature that provides participants with event suggestions based on their selected interests.
+Gada Events closes those three gaps:
 
-### Project Objectives
+- **Visibility:** one place to find career and learning events, with full details.
+- **Audience:** organizers say who an event is for; the platform recommends it to matching participants and shows the organizer an audience-match score.
+- **Feedback:** after an event, registered attendees rate it, and the organizer gets an AI summary of what to keep, what to fix and what to do next.
 
-The main objective is to develop and implement a digital platform that streamlines local event organization and participant registration.
+There are two roles: **participant** and **organizer**. The role is chosen at sign-up.
 
-The specific objectives are to:
+## 2. Features
 
-1. Provide a centralized platform for discovering local events.
-2. Enable organizers to create, publish and manage events.
-3. Simplify participant registration and registration management.
-4. Support organizers in monitoring registrations and attendance.
-5. Provide administrative functionality for managing platform activities.
-6. Improve event discovery through interest-based recommendations.
+**Participants**
+- Sign up (with Privacy Policy consent), log in, delete their account.
+- Browse published events without logging in; search by keyword; filter by category and by Today / Tomorrow / This Weekend.
+- Open an event page: date, time, venue, capacity, organizer profile and a Google Maps view of the venue.
+- Register for an event (duplicate and full-event checks; Mobile Money code for paid events).
+- Set interests, age range and experience level, and get "Recommended for you" events ranked by a match score.
+- Rate an event they registered for, once the event date has arrived (1 to 5 stars plus three optional comments).
 
-## 2. Key Features
+**Organizers**
+- Create, edit, publish and remove events. New events start as drafts.
+- Describe the target audience: audience tags, age ranges and experience level.
+- Dashboard per event: registrations against capacity, estimated attendance and audience-match percentage.
+- "Feedback & AI insights": all ratings and comments (without names) and an AI summary with what attendees liked, what to improve and ideas for the next event.
+- Company profile shown on every public event page.
 
-### 2.1 Participant Features
+**Platform**
+- JWT login that expires after 2 hours; role checks on every protected route.
+- Passwords hashed with bcrypt (cost 12).
+- If the AI service is busy or unavailable, the server retries once and then falls back to a keyword summary, so organizers always get a result.
 
-- User account registration and authentication.
-- Browse published events.
-- Search and filter available events.
-- View detailed event information.
-- Register for available events.
-- Cancel registrations where permitted.
-- View registered events through a participant dashboard.
-- Receive appropriate feedback during registration.
-- Discover recommended events based on selected interests.
+## 3. Technology stack
 
-### 2.2 Event Organizer Features
-
-- Organizer account authentication.
-- Create new events.
-- Provide event titles, descriptions, dates, times, venues and capacity.
-- Edit and update event information.
-- Publish events.
-- Update or cancel events.
-- View registered participants.
-- Monitor registration numbers.
-- Manage participant attendance.
-
-### 2.3 Administrator Features
-
-- Access administrative functionality.
-- View and manage registered users.
-- View and manage events.
-- Manage inappropriate events and reported content.
-- Support general platform administration.
-
-### 2.4 System Features
-
-- Authentication and role-based access control.
-- Password hashing using bcrypt.
-- JWT-based authentication.
-- Duplicate registration prevention.
-- Event capacity validation.
-- Persistent database storage.
-- Input validation and error handling.
-- Interest-based event recommendations.
-
-## 3. Technology Stack
-
-Gada Events uses a client-server architecture consisting of a frontend, backend and relational database.
-
-| Component | Technology | Purpose |
-|---|---|---|
-| Frontend | React 19.2.8 | User interface |
-| Build tool | Vite 8.3.2 | Development and production builds |
-| Routing | React Router DOM 7.18.4 | Application navigation |
-| Backend | Node.js 24.21.0 | Server-side runtime |
-| Backend framework | Express 5.3.0 | REST API and request handling |
-| Database | PostgreSQL | Persistent data storage |
-| Database integration | pg 8.23.1 | PostgreSQL connectivity |
-| Authentication | jsonwebtoken 9.0.3 | JWT authentication |
-| Password security | bcrypt 6.0.0 | Password hashing |
-| Environment configuration | dotenv 18.0.7 | Environment variables |
-| API middleware | cors 2.8.6 | Cross-origin resource sharing |
-| Development tool | Nodemon 3.1.14 | Backend development |
-| Version control | Git and GitHub | Source code management |
-| API testing | Postman | API testing |
-| Code editor | Visual Studio Code | Development environment |
-
-**Additional frontend dependencies:** React Leaflet 5.0.0, Leaflet 1.9.4 and Mapbox GL 3.33.0.
-
-### Development Environment
-
-The application was developed and tested using:
-
-- Node.js: v24.21.0
-- npm: 11.19.0
-- Vite: v8.3.2
-- PostgreSQL: Compatible PostgreSQL installation
-- Operating system: macOS development environment
-- Browser: Modern web browser
-
-Dependency versions are managed through the respective `package.json` and lock files.
-
-## 4. System Architecture
-
-The application follows a three-layer client-server architecture.
-
-```text
-             USERS
- Participants | Organizers | Admin
-                  |
-                  v
-          REACT FRONTEND
-             (Vite)
-                  |
-             HTTP Requests
-                  |
-                  v
-          NODE.JS + EXPRESS
-              REST API
-                  |
-        Application Logic
-        Authentication
-        Input Validation
-        Access Control
-                  |
-                  v
-             POSTGRESQL
-               DATABASE
-```
-
-### 4.1 Presentation Layer
-
-The React frontend provides the user interface and handles user interactions. React Router DOM manages navigation between application pages.
-
-### 4.2 Application Layer
-
-The Node.js and Express backend handles API requests, authentication, application logic, validation and communication with the database.
-
-### 4.3 Data Layer
-
-PostgreSQL provides persistent storage for user accounts, events, registrations and related application information.
-
-The frontend communicates with the backend through HTTP requests. The backend processes requests, interacts with PostgreSQL and returns appropriate responses to the frontend.
-
-## 5. Database Design
-
-PostgreSQL is used to store and manage the application's data.
-
-The main data entities identified in the system design include:
-
-| Entity | Description |
+| Layer | Technology |
 |---|---|
-| User | Stores user account information and roles |
-| Event | Stores event details and organizer associations |
-| Registration | Stores participant event registrations |
-| Attendance | Stores attendance-related information |
-| Notification | Stores notification-related information |
+| Website | React 19, React Router, Vite |
+| API | Node.js 22, Express 5, `pg`, `bcrypt`, `jsonwebtoken`, `cors`, `dotenv` |
+| Database | PostgreSQL 16 or newer |
+| AI | Google Gemini API (REST `generateContent`), optional |
+| Tests | Node's built-in test runner (`node --test`) |
+| Hosting | Render (static site, web service, PostgreSQL), defined in `render.yaml` |
 
-These entities support the main application workflows, including account management, event creation, participant registration and attendance management.
-
-## 6. Project Structure
-
-The repository separates the frontend and backend into independent directories.
+## 4. Project structure
 
 ```text
 local-events-platform/
-│
-├── client/
-│   ├── public/
+├── client/                      React website
 │   ├── src/
+│   │   ├── App.jsx              all page routes (9 paths)
 │   │   ├── auth/
-│   │   ├── pages/
-│   │   ├── components/
-│   │   ├── App.jsx
-│   │   ├── App.css
-│   │   ├── index.css
-│   │   └── main.jsx
-│   ├── index.html
-│   ├── package.json
-│   ├── package-lock.json
-│   ├── vite.config.js
-│   └── ...
-│
-├── server/
-│   ├── server.js
-│   ├── package.json
-│   ├── package-lock.json
-│   └── ...
-│
-├── .gitignore
+│   │   │   ├── AuthContext.jsx  login state, token in localStorage (gada_auth)
+│   │   │   └── ProtectedRoute.jsx  keeps each role in its own dashboard
+│   │   └── pages/
+│   │       ├── Home.jsx, Events.jsx, EventDetails.jsx
+│   │       ├── Login.jsx, Register.jsx, Privacy.jsx
+│   │       ├── ParticipantDashboard.jsx, RecommendedEvents.jsx, FeedbackForm.jsx
+│   │       ├── OrganizerDashboard.jsx, FeedbackInsights.jsx
+│   │       └── DeleteAccount.jsx
+│   ├── .env.example
+│   └── package.json
+├── server/                      Express API
+│   ├── server.js                all routes, auth middleware, database pool
+│   ├── matching.js              audience tags and the match score
+│   ├── insights.js              AI feedback summary and keyword fallback
+│   ├── db/
+│   │   ├── schema.sql           creates the 5 tables (runs automatically on start)
+│   │   └── seed.js              demo accounts and events (npm run seed)
+│   ├── tests/                   22 unit tests
+│   ├── .env.example
+│   └── package.json
+├── render.yaml                  Render Blueprint (database, API, website)
 └── README.md
 ```
 
-The structure is representative of the main project directories. Individual files and additional configuration files are available in the repository.
+## 5. Run it on your computer (step by step)
 
-## Deployment (Render)
+### 5.1 Install these first
 
-The repository includes a `render.yaml` Blueprint that creates the PostgreSQL database, the API and the website.
+| Tool | Version | Check with |
+|---|---|---|
+| Node.js (includes npm) | 20 or newer (22 recommended) | `node -v` |
+| PostgreSQL | 14 or newer | `psql --version` |
+| Git | any | `git --version` |
 
-1. In Render, choose **New > Blueprint** and select this repository.
-2. When asked, set `CLIENT_ORIGIN` on **gada-events-api** to the website URL and `VITE_API_URL` on **gada-events** to the API URL.
-3. Deploy. On first start the API creates the tables from `server/db/schema.sql`.
-
-Free Render web services sleep after a period without traffic, so the first request after a pause can take up to a minute.
-
-## 7. Installation and Setup
-
-Follow the instructions below to run Gada Events locally.
-
-### 7.1 Prerequisites
-
-Install the following before setting up the project:
-
-- Node.js and npm.
-- PostgreSQL.
-- Git.
-- Visual Studio Code or another code editor.
-- A modern web browser.
-
-### 7.2 Clone the Repository
-
-Open a terminal and run:
+### 5.2 Get the code
 
 ```bash
 git clone https://github.com/kkarangwa/local-events-platform.git
-```
-
-Navigate to the project directory:
-
-```bash
 cd local-events-platform
 ```
 
-### 7.3 Database Configuration
+### 5.3 Create the database
 
-1. Start your PostgreSQL server.
-2. Create a database named `gada_events`.
+Start PostgreSQL, then create an empty database:
 
-```sql
-CREATE DATABASE gada_events;
+```bash
+createdb gada_events
+# or, inside psql:
+# CREATE DATABASE gada_events;
 ```
 
-3. Configure the backend database connection using the environment variables expected by the server.
-4. Ensure the required database schema and tables are initialized before running the application.
+You do **not** need to create tables by hand. The API runs `server/db/schema.sql` every time it starts and creates anything that is missing.
 
-### 7.4 Backend Setup
-
-Navigate to the server directory:
+### 5.4 Set up and start the API
 
 ```bash
 cd server
-```
-
-Install the dependencies:
-
-```bash
 npm install
+cp .env.example .env        # Windows: copy .env.example .env
 ```
 
-Create the required `.env` file in the server directory.
+Open `server/.env` and fill in your values:
 
-The backend uses environment configuration for:
+```env
+PORT=5001
+JWT_SECRET=any-long-random-text
+CLIENT_ORIGIN=http://localhost:5173
 
-- Server port (`PORT`, defaulting to `5001`).
-- JWT authentication secret (`JWT_SECRET`).
-- Database connection settings.
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=gada_events
+DB_USER=postgres
+DB_PASSWORD=your-postgres-password
 
-Use the exact database environment variable names expected by the backend configuration. Do not commit credentials or authentication secrets to the repository.
+# Optional: AI summaries. Free key at https://aistudio.google.com
+GEMINI_API_KEY=
+```
 
-Start the backend:
+Load the demo data (recommended), then start the API:
 
 ```bash
-npm start
+npm run seed     # demo organizer, participant and 4 events
+npm start        # or: npm run dev  (restarts on file changes)
 ```
 
-For development:
-
-```bash
-npm run dev
-```
-
-The backend runs at:
+You should see:
 
 ```text
-http://localhost:5001
+Database schema checked.
+Gada Events API running on port 5001
 ```
 
-### 7.5 Frontend Setup
+Check it in the browser: http://localhost:5001/api/db-health should answer `{"success":true,...}`.
 
-Open a separate terminal and navigate to the client directory:
+### 5.5 Set up and start the website
+
+Open a **second** terminal:
 
 ```bash
 cd client
-```
-
-Install dependencies:
-
-```bash
 npm install
-```
-
-Start the frontend development server:
-
-```bash
+cp .env.example .env        # contains VITE_API_URL=http://localhost:5001
 npm run dev
 ```
 
-The frontend is available at:
+Open **http://localhost:5173**.
 
-```text
-http://localhost:5173
+### 5.6 Other commands
+
+| Folder | Command | What it does |
+|---|---|---|
+| `server` | `npm start` | Start the API |
+| `server` | `npm run dev` | Start the API with auto-restart (nodemon) |
+| `server` | `npm run seed` | Add demo accounts and events (safe to run again) |
+| `server` | `npm test` | Run the 22 unit tests |
+| `client` | `npm run dev` | Start the website in development mode |
+| `client` | `npm run build` | Build the website into `client/dist` |
+| `client` | `npm run preview` | Serve the built website locally |
+| `client` | `npm run lint` | Run ESLint |
+
+## 6. Try every feature with the demo accounts
+
+After `npm run seed`:
+
+| Role | Email | Password |
+|---|---|---|
+| Organizer | `organizer@gada.demo` | `GadaDemo2026!` |
+| Participant | `participant@gada.demo` | `GadaDemo2026!` |
+
+The seed creates four published events. "CV and LinkedIn Clinic" is dated **today**, and the demo participant is already registered for it, so you can test feedback straight away.
+
+A short walkthrough:
+
+1. **Browse** without logging in: open *Events*, search, try the category and *Today* filters, open an event.
+2. **Participant:** log in as the participant. Open *Recommended for you* and edit the answers to see the ranking change. Register for another event. Under *My registrations*, click **★ Rate this event** on "CV and LinkedIn Clinic" and send a rating.
+3. **Organizer:** log in as the organizer. Each event card shows registrations, estimated attendance and audience match. Click **★ Feedback & AI insights** on "CV and LinkedIn Clinic", then **Generate insights**.
+   - With `GEMINI_API_KEY` set, the note under the result says it came from AI.
+   - Without a key, you get the keyword summary ("Basic keyword summary").
+4. **Create an event:** *Create event*, fill in "Who is this event for?", save (draft), then **Publish**.
+5. **Privacy:** open `/privacy`; on either dashboard, use *Delete my account* (asks for the password).
+
+"Rate this event" only appears from the day of the event onwards. To test it on your own event, create one dated today.
+
+## 7. Environment variables
+
+**`server/.env`**
+
+| Name | Required | Example | Purpose |
+|---|---|---|---|
+| `PORT` | no | `5001` | API port (default 5001) |
+| `JWT_SECRET` | **yes** | long random text | Signs login tokens. The API will not start without it |
+| `CLIENT_ORIGIN` | yes | `http://localhost:5173` | Website address allowed by CORS (comma-separate several) |
+| `DATABASE_URL` | one of these two | `postgresql://user:pass@host:5432/gada_events` | Full connection string (used on Render) |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | one of these two | `localhost`, `5432`, ... | Separate local settings |
+| `DB_SSL` | no | `false` | Set `false` for a local database reached through `DATABASE_URL` |
+| `GEMINI_API_KEY` | no | from Google AI Studio | Turns on AI feedback summaries |
+| `GEMINI_MODEL` | no | `gemini-flash-latest` | Gemini model name (default `gemini-flash-latest`) |
+| `GEMINI_RETRY_DELAY_MS` | no | `2000` | Wait before retrying a busy (429/5xx) Gemini call |
+| `AUTO_MIGRATE` | no | `false` | Skip running `schema.sql` on start |
+
+**`client/.env`**
+
+| Name | Required | Example | Purpose |
+|---|---|---|---|
+| `VITE_API_URL` | **yes** | `http://localhost:5001` | Address of the API |
+
+Never commit `.env` files. `.gitignore` already excludes them.
+
+## 8. Running the tests
+
+```bash
+cd server
+npm test
 ```
 
-Open this address in your browser to access Gada Events.
+Expected ending:
 
-### 7.6 Available Frontend Commands
+```text
+# tests 22
+# pass 22
+# fail 0
+```
 
-Run these commands from the `client` directory:
+| File | Tests | What they check |
+|---|---|---|
+| `tests/matching.test.js` | 13 | Match score (perfect match 100, one shared tag 35 interest points, open events, score stays 0 to 100); audience-tag and targeting validation |
+| `tests/insights.test.js` | 9 | Average rating; keyword summary; **the AI prompt never contains names, emails or phone numbers**; fallback with no key or on failure; a valid AI reply is parsed; a busy (503) Gemini is retried once; a wrong key (403) is not retried |
 
-| Command | Description |
+The AI tests replace `fetch` with a fake, so they never call Google and need no key or internet.
+
+## 9. API reference
+
+Base URL: `http://localhost:5001` (local) or `https://gada-events-api.onrender.com` (live). Protected routes need the header `Authorization: Bearer <token>`, where the token comes from login or sign-up.
+
+**Health**
+
+| Method | Path | Access | Purpose |
+|---|---|---|---|
+| GET | `/api/health` | public | API is running |
+| GET | `/api/db-health` | public | API can reach the database |
+
+**Accounts**
+
+| Method | Path | Access | Purpose |
+|---|---|---|---|
+| POST | `/api/auth/register` | public | Sign up `{name, email, password, role, acceptPrivacy: true}` |
+| POST | `/api/auth/login` | public | Log in `{email, password}`, returns `{token, user}` |
+| GET | `/api/auth/me` | logged in | Current user |
+| DELETE | `/api/auth/me` | logged in | Delete account and personal data `{password}` |
+
+**Events**
+
+| Method | Path | Access | Purpose |
+|---|---|---|---|
+| GET | `/api/events` | public | All published events |
+| GET | `/api/events/:id` | public | One published event |
+| POST | `/api/events` | organizer | Create (saved as draft) |
+| PATCH | `/api/events/:id` | organizer (owner) | Edit |
+| PATCH | `/api/events/:id/publish` | organizer (owner) | Publish |
+| DELETE | `/api/events/:id` | organizer (owner) | Remove (refused if people registered) |
+| GET | `/api/audience-tags` | public | Allowed audience tags, age ranges, levels |
+
+**Registrations**
+
+| Method | Path | Access | Purpose |
+|---|---|---|---|
+| POST | `/api/events/:id/register` | participant | Register `{full_name, email, phone, payment_reference?}` |
+| GET | `/api/participant/registrations` | participant | My registrations |
+| GET | `/api/organizer/events/:id/registrations` | organizer (owner) | Registrants of one event |
+| PATCH | `/api/registrations/:id/attendance` | organizer (owner) | Mark attended `{attended}` |
+| PATCH | `/api/registrations/:id/confirm-payment` | organizer (owner) | Confirm a Mobile Money payment |
+
+**Profiles, recommendations and dashboard**
+
+| Method | Path | Access | Purpose |
+|---|---|---|---|
+| PATCH | `/api/participant/profile` | participant | Interests, age range, experience level |
+| GET | `/api/recommendations` | participant | Top 6 upcoming events by match score |
+| GET | `/api/organizer/me` | organizer | Organizer profile |
+| PATCH | `/api/organizer/profile` | organizer | Company name, website, email, description |
+| GET | `/api/organizer/events` | organizer | Own events with registrations, estimated attendance, audience match, feedback count |
+
+**Feedback and AI insights**
+
+| Method | Path | Access | Purpose |
+|---|---|---|---|
+| POST | `/api/events/:id/feedback` | participant (registered, event date reached) | `{rating 1-5, liked?, improve?, want_next?}`; sending again updates it |
+| GET | `/api/organizer/events/:id/feedback` | organizer (owner) | All feedback (no names) and the saved summary |
+| POST | `/api/organizer/events/:id/insights` | organizer (owner) | Generate or refresh the summary |
+
+`POST /api/ussd` is a prototype for basic phones (Africa's Talking format). It is not connected to a live short code.
+
+## 10. Database
+
+Five tables, created by `server/db/schema.sql`:
+
+| Table | Holds | Key rules |
+|---|---|---|
+| `users` | Participants and organizers | `email` unique; `role` is participant or organizer; `privacy_consent_at` |
+| `events` | Events | `organizer_id` → users; `status` draft or published; `capacity` > 0; target audience columns |
+| `registrations` | Who registered for what | UNIQUE (`event_id`, `participant_id`); `attended`, `payment_status` |
+| `event_feedback` | Ratings and comments | `rating` 1 to 5; UNIQUE (`event_id`, `participant_id`); deleted with the event or user |
+| `event_insights` | Last AI or keyword summary per event | one row per event; `source` is `ai` or `basic` |
+
+## 11. How the main features work
+
+- **Match score** (`server/matching.js`, `computeMatchScore`): out of 100. Shared interests 50 points (35 for one shared tag), age range 25, experience level 25. A question the organizer left open counts as a full match. The score only changes the **order** of recommendations; no event is hidden.
+- **Audience match** on the organizer dashboard: the average match score of everyone registered.
+- **Estimated attendance:** each registrant's past attendance rate when recorded, otherwise 65% (free) or 85% (paid).
+- **Registration:** runs in one transaction with the event row locked (`SELECT ... FOR UPDATE`), so two people cannot take the last place at the same time.
+- **AI insights** (`server/insights.js`): `buildPrompt` sends only ratings and comment text to Gemini and asks for JSON (summary, liked, improve, next_ideas). Busy answers (429, 5xx) are retried once; on any other failure, `basicInsights` summarises the most common phrases on the server.
+
+## 12. Deploying to Render
+
+1. In Render choose **New > Blueprint** and pick this repository. `render.yaml` creates `gada-events-db`, `gada-events-api` and `gada-events`.
+2. On **gada-events-api → Environment** set `CLIENT_ORIGIN` to the website address and, optionally, `GEMINI_API_KEY`. `DATABASE_URL` and `JWT_SECRET` are filled in by the Blueprint.
+3. On **gada-events → Environment** set `VITE_API_URL` to the API address.
+4. Deploy both. The API creates the tables on first start. To add demo data, run `npm run seed` from the API's Shell.
+5. After new code is pushed, redeploy the website with **Manual Deploy → Clear build cache & deploy**.
+
+## 13. Troubleshooting
+
+| Problem | Fix |
 |---|---|
-| `npm run dev` | Starts the development server |
-| `npm run build` | Generates the production build |
-| `npm run lint` | Runs ESLint |
-| `npm run preview` | Previews the production build |
-
-## 8. API Documentation
-
-The Express backend exposes REST API endpoints to support authentication, event management and participant operations.
-
-### 8.1 Health and Authentication Endpoints
-
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/health` | Checks backend availability |
-| GET | `/api/db-health` | Checks database connectivity |
-| POST | `/api/auth/register` | Registers a user |
-| POST | `/api/auth/login` | Authenticates a user |
-| GET | `/api/auth/me` | Retrieves authenticated user information |
-
-### 8.2 Event Management Endpoints
-
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/events` | Retrieves available events |
-| GET | `/api/events/:id` | Retrieves a specific event |
-| POST | `/api/events` | Creates an event |
-| PATCH | `/api/events/:id` | Updates an event |
-| PATCH | `/api/events/:id/publish` | Publishes an event |
-| DELETE | `/api/events/:id` | Deletes an event |
-
-### 8.3 Organizer and Participant Endpoints
-
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/organizer/events` | Retrieves organizer events |
-| GET | `/api/organizer/me` | Retrieves organizer information |
-| PATCH | `/api/organizer/profile` | Updates organizer profile |
-| GET | `/api/participant/registrations` | Retrieves participant registrations |
-
-The API uses HTTP methods and JSON responses to support communication between the frontend and backend. Protected operations require appropriate authentication and authorization.
-
-## 9. Testing and Validation
-
-Testing was conducted to evaluate the functionality, integration and reliability of the application.
-
-### 9.1 Functional Testing
-
-Functional testing verified that the implemented features behaved as expected.
-
-The following areas were tested:
-
-- User registration and authentication.
-- Event creation, editing and publishing.
-- Event discovery, search and filtering.
-- Event details.
-- Participant registration and cancellation.
-- Participant and organizer dashboards.
-- Registration monitoring.
-- Attendance management.
-- Administrative functionality.
-- Recommended Events and interest preference updates.
-
-### 9.2 Integration Testing
-
-Integration testing assessed communication between the frontend, backend and database.
-
-The following end-to-end workflow was successfully tested:
-
-1. An organizer creates and publishes an event.
-2. A participant discovers the published event.
-3. The participant registers for the event.
-4. The organizer's registration count updates accordingly.
-
-### 9.3 Negative Testing
-
-Negative testing assessed how the application responds to invalid input and unauthorized actions.
-
-The following scenarios were tested:
-
-- Invalid registration details were rejected.
-- Incomplete event creation details were rejected.
-- Duplicate event registration was prevented.
-- Unauthorized organizer access was blocked.
-- Requests for nonexistent events were handled correctly.
-- Registration attempts when event capacity was reached were prevented.
-
-### 9.4 Build and Connectivity Validation
-
-The following technical checks were completed:
-
-- Backend startup was successful.
-- Backend health endpoint returned a successful response.
-- Database health endpoint confirmed a successful connection to `gada_events`.
-- Frontend development server started successfully.
-- Application pages loaded successfully.
-- Production build completed successfully using `npm run build`.
-
-**Performance and compatibility testing:** Formal performance benchmarking and cross-browser compatibility assessment remain outstanding. No measured response-time, resource-usage or browser-comparison results are claimed.
-
-## 10. Code Quality and Technical Implementation
-
-The application separates frontend presentation, backend request handling and database operations.
-
-Key implementation considerations include:
-
-- Modular organization of frontend pages and application functionality.
-- Separation of frontend and backend responsibilities.
-- REST API-based communication.
-- Reusable React components and application routing.
-- Centralized database connectivity.
-- Authentication and role-based access restrictions.
-- Validation of registration and event-management operations.
-- Environment-based configuration for sensitive information.
-
-The application implements business rules to maintain data integrity, including duplicate registration prevention and event capacity validation.
-
-The production build completed successfully. The linting process also identified six outstanding issues involving React Fast Refresh export rules, an unused variable and state updates within React effects. These are documented as areas for further code-quality refinement.
-
-## 11. Algorithms and Problem-Solving
-
-Gada Events implements application logic to address practical challenges in event discovery, registration and event management.
-
-### 11.1 Registration Validation
-
-Before a registration is completed, the system checks whether the participant is already registered and whether the event has reached its capacity.
-
-This helps prevent duplicate registrations and registrations beyond the permitted event capacity.
-
-### 11.2 Event Discovery and Filtering
-
-Participants can browse available events and use search and filtering functionality to identify events relevant to their requirements.
-
-### 11.3 Interest-Based Recommendations
-
-The Recommended Events feature uses participants' selected interests to determine which events to suggest.
-
-When participants update their interest preferences, the recommendations displayed are updated accordingly.
-
-These mechanisms support more organized event management and improve the participant experience.
-
-## 12. Security Considerations
-
-The application incorporates security measures to protect user accounts and restrict access to protected functionality.
-
-These include:
-
-- Password hashing using bcrypt.
-- JWT-based authentication.
-- Authentication checks for protected operations.
-- Role-based access restrictions.
-- Input validation.
-- Environment-based configuration for sensitive credentials.
-
-Database credentials and authentication secrets should remain outside the public repository.
-
-## 13. Limitations and Future Improvements
-
-The initial implementation focuses on the core requirements of local event management and participant registration in Kigali.
-
-Potential future improvements include:
-
-- Online payment integration.
-- Advanced ticket management.
-- Real-time event location and tracking features.
-- More advanced recommendation capabilities.
-- Advanced attendance analytics and prediction.
-- Optimization for larger user populations.
-- Expanded integration with external platforms.
-
-These improvements can extend the platform beyond its initial minimum viable product scope.
-
-## 14. Demonstration Video
-
-The demonstration video provides a practical walkthrough of Gada Events and its implemented functionality.
-
-**Video Link:** https://drive.google.com/file/d/1QhYVqA_Vud_0UhygsOt_9lAC1YjrTCwF/view?usp=drive_link
-
-The demonstration covers:
-
-- Application overview and navigation.
-- Participant registration and authentication.
-- Event discovery and registration.
-- Participant dashboard.
-- Organizer event creation and management.
-- Registration monitoring and attendance management.
-- Administrative functionality.
-- Technical architecture and implementation.
-- Testing and validation.
-
-## 15. Final Product Technical Report
-
-The accompanying technical report provides further details about the project scope, implemented functionality, technical architecture, testing results, code quality and problem-solving approach.
-
-**Technical Report (PDF):** https://docs.google.com/document/d/16RHwHyF8qC7FujxU4vBuG3CkYnTnx2d6WPiZ6VvLYoM/edit?usp=sharing
-
-## 16. Author and Repository Information
-
-**Project:** Gada Events  
-**Developer:** Kethia Karangwa  
-**Programme:** Bachelor of Science in Software Engineering  
-**Institution:** African Leadership University  
-**Project Scope:** Kigali, Rwanda  
-
-**GitHub Repository:**  
-https://github.com/kkarangwa/local-events-platform
+| `JWT_SECRET is missing from server/.env` | Create `server/.env` from `.env.example` and set `JWT_SECRET` |
+| `password authentication failed` / `database "gada_events" does not exist` | Check `DB_USER`, `DB_PASSWORD`, and run `createdb gada_events` |
+| Events page says "We could not load events" | API not running, or `VITE_API_URL` is wrong. Restart `npm run dev` after editing `client/.env` |
+| CORS error in the browser console | Add the website address to `CLIENT_ORIGIN` in `server/.env` and restart the API |
+| No "Rate this event" button | It appears only on the event date or later, and only for registered participants |
+| Insights say "Basic keyword summary (AI not available)" | No `GEMINI_API_KEY`, or Gemini was busy. Check the API log for `AI insights failed` and the status code |
+| Live site very slow on first load | Free Render service waking up; wait up to a minute |
+
+## 14. Security and privacy
+
+- Passwords hashed with bcrypt (cost 12); the hash is never returned by the API.
+- Signed JWT, 2-hour expiry; `requireAuth` and `requireRole` on every protected route; organizers can only change their own events.
+- All SQL uses placeholders (`$1, $2`), which prevents SQL injection.
+- Sign-up requires Privacy Policy consent, stored as `privacy_consent_at` (Rwanda Law No. 058/2021).
+- Account deletion removes the user's data in one transaction.
+- Feedback reaches organizers without names; only rating and comment text go to Gemini.
+- CORS limited to `CLIENT_ORIGIN`; request bodies capped at 20 KB; secrets only in environment variables.
+
+## 15. Limitations and future work
+
+- The USSD menu for basic phones is a prototype and not connected to a live short code.
+- Being registered does not prove attendance; the API can mark attendance but the dashboard has no button yet.
+- No administrator role, online payments or ticketing.
+- The AI summaries were tested with test feedback, not yet with real event feedback.
+- Free hosting sleeps when idle.
+
+## 16. Demonstration video and report
+
+- **Demonstration video:** https://drive.google.com/file/d/1QhYVqA_Vud_0UhygsOt_9lAC1YjrTCwF/view?usp=drive_link
+- **Capstone report:** submitted as a PDF; it contains the full design (ERD, class, use case and sequence diagrams), testing and results.
 
 ---
 
-*Gada Events — Simplifying Local Event Management and Participant Registration.*
+*Gada Events: helping the right people find the events that grow them.*
